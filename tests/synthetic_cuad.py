@@ -49,11 +49,12 @@ SYNTHETIC: dict[str, tuple[str, dict[str, list[str]]]] = {
         },
     ),
     BETA: (
-        "SERVICES AGREEMENT\nThe parties are Beta Corp and Client LLC.\n",
+        "SERVICES AGREEMENT\nThe parties are Beta Corp and Client LLC (“Café”).\n",
         {OTHER_LABEL: ["Beta Corp", "Client LLC"]},
     ),
     GAMMA: (
-        "LICENSE\nLicensee may terminate this License at any time upon 30 days notice.\n",
+        # U+2028 LINE SEPARATOR occurs in a real CUAD contract (see LOG-005).
+        "LICENSE Licensee may terminate this License at any time upon 30 days notice.\n",
         {
             CuadLabel.TERMINATION_FOR_CONVENIENCE: [
                 "Licensee may terminate this License at any time upon 30 days notice."

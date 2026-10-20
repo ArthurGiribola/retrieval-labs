@@ -51,6 +51,19 @@ def test_files_use_lf_line_endings(prepared: Path) -> None:
         assert b"\r\n" not in (prepared / name).read_bytes(), name
 
 
+def test_files_are_pure_ascii(prepared: Path) -> None:
+    """Non-ASCII text (including U+2028) must be escaped so no reader can split a record."""
+    for name in OUTPUTS:
+        assert (prepared / name).read_bytes().isascii(), name
+
+
+def test_jsonl_has_one_line_per_record(prepared: Path) -> None:
+    manifest = read_manifest(prepared)
+    for name in [CONTRACTS_FILE, GOLD_FILE]:
+        text = (prepared / name).read_text(encoding="utf-8")
+        assert len(text.splitlines()) == manifest.files[name].records, name
+
+
 def test_load_contracts_by_split(prepared: Path) -> None:
     manifest = read_manifest(prepared)
     for split in Split:

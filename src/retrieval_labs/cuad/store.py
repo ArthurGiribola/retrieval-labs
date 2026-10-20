@@ -54,9 +54,14 @@ class Manifest(BaseModel):
     files: dict[str, OutputFile]
 
 
+# All outputs are pure ASCII (ensure_ascii=True). Contract texts contain characters such
+# as U+2028 LINE SEPARATOR that json.dumps leaves unescaped otherwise, and that
+# str.splitlines() and other readers treat as line breaks, corrupting JSONL records.
+
+
 def write_json(path: Path, payload: Any) -> None:
     with path.open("w", encoding="utf-8", newline="\n") as handle:
-        json.dump(payload, handle, ensure_ascii=False, sort_keys=True, indent=2)
+        json.dump(payload, handle, ensure_ascii=True, sort_keys=True, indent=2)
         handle.write("\n")
 
 
@@ -65,7 +70,7 @@ def write_jsonl(path: Path, records: Iterable[BaseModel]) -> int:
     with path.open("w", encoding="utf-8", newline="\n") as handle:
         for record in records:
             handle.write(
-                json.dumps(record.model_dump(mode="json"), ensure_ascii=False, sort_keys=True)
+                json.dumps(record.model_dump(mode="json"), ensure_ascii=True, sort_keys=True)
             )
             handle.write("\n")
             count += 1
@@ -83,7 +88,8 @@ def _verified_lines(directory: Path, name: str, manifest: Manifest) -> list[str]
     path = directory / name
     if sha256_file(path) != manifest.files[name].sha256:
         raise CuadDataError(f"{path} does not match the manifest; re-run preparation")
-    return path.read_text(encoding="utf-8").splitlines()
+    # Split on "\n" only, as JSONL defines; never splitlines() or universal newlines.
+    return path.read_bytes().decode("utf-8").split("\n")[:-1]
 
 
 def load_contracts(split: Split, directory: Path = DEFAULT_PROCESSED_DIR) -> list[Contract]:

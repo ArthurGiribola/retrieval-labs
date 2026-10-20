@@ -59,18 +59,18 @@ def load_retriever(method: str) -> Retriever:
 
 
 @st.cache_resource(show_spinner="Loading contracts...")
-def load_test_contracts() -> dict[str, Contract]:
-    contracts = load_contracts(Split.TEST, PROCESSED_DIR)
+def load_test_contracts(directory: Path) -> dict[str, Contract]:
+    contracts = load_contracts(Split.TEST, directory)
     return {c.contract_id: c for c in sorted(contracts, key=lambda c: c.title.lower())}
 
 
 @st.cache_data(show_spinner=False, max_entries=32)
 def retrieve(
-    contract_id: str, method: str
+    contract_id: str, method: str, directory: Path
 ) -> tuple[dict[ClauseType, list[RetrievalResult]], float]:
     """Top passages per clause type for one contract, and the seconds retrieval took
     (indexing, including chunk embedding when not cached, plus the five queries)."""
-    contract, retriever = load_test_contracts()[contract_id], load_retriever(method)
+    contract, retriever = load_test_contracts(directory)[contract_id], load_retriever(method)
     started = time.perf_counter()
     search = ContractSearch(contract, retriever, ChunkingConfig())
     results = {clause: search.search(clause, TOP_K) for clause in ClauseType}
@@ -105,7 +105,7 @@ def show_clause(clause: ClauseType, results: list[RetrievalResult], threshold: f
 
 def evidence_tab() -> None:
     try:
-        contracts = load_test_contracts()
+        contracts = load_test_contracts(PROCESSED_DIR)
     except CuadDataError as exc:
         st.error(
             f"The prepared CUAD dataset was not found ({exc}). Run "
@@ -119,7 +119,7 @@ def evidence_tab() -> None:
     )
     contract = contracts[contract_id]
     with st.spinner("Retrieving evidence..."):
-        results, seconds = retrieve(contract_id, METHOD)
+        results, seconds = retrieve(contract_id, METHOD, PROCESSED_DIR)
     thresholds = presence_thresholds(METHOD, TEST_RUN, REPORTS_DIR)
     st.caption(
         f"{contract.contract_id} · {len(contract.text):,} characters · retrieval with "

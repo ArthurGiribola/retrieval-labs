@@ -1,0 +1,7 @@
+# Read by `streamlit run` from the repository root.
+[browser]
+gatherUsageStats = false
+
+[server]
+# Local demo only: do not listen on the network (brief Section 18; deployment is Phase 7).
+address = "localhost"

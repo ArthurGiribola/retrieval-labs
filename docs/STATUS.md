@@ -4,11 +4,21 @@ _Last updated: 2026-10-20_
 
 ## Current phase
 
-**Minimum publishable version (brief 21.2, D-002): in progress.** Phase 4 complete and
-approved; the application retrieves with hybrid + reranking (D-001). Steps: 1. shared retriever
-factory, pipeline defaults to `hybrid+rerank` — done (dev benchmark re-run after the refactor:
-item files and run summaries identical); 2. Streamlit demo; 3. tests; 4. English README;
-5. close and stop. Phase 5 starts only after owner authorization.
+**Minimum publishable version (brief 21.2, D-002): complete.** Waiting for the owner's demo
+screenshot, the decision to make the repository public, and authorization to start Phase 5.
+
+- Shared retriever factory; the pipeline defaults to `hybrid+rerank` (D-001). The dev
+  benchmark re-run after the refactor reproduced every item file and run summary.
+- `demo/streamlit_app.py`: top-5 passages per clause type for any CUAD test contract, presence
+  threshold fit on train, benchmark tables rendered from stored runs. No LLM calls, no gold.
+  Local only, telemetry off (`.streamlit/config.toml`, LOG-015). Retrieval with warm
+  embeddings took 0.62–3.25 s per contract on three contracts (LOG-014).
+- `streamlit==1.65.0` in a default `demo` dependency group; new packages are at least two
+  weeks old (three transitive pins in `constraint-dependencies`).
+- `README.md` (English) with a commented slot for a screenshot; `LICENSE` (MIT);
+  `docs/DECISIONS.md` (D-001, D-002).
+- Tests: report tables, demo (AppTest with and without data; import restrictions), README
+  table identical to the stored test run.
 
 **Phase 4 — Retrieval Comparison: complete.**
 Frozen setup: bge-small-en-v1.5 @5c38ec7c, ms-marco-MiniLM-L6-v2 @233902d2, 150/50 chunks,
@@ -86,11 +96,12 @@ Phase 3 — Initial Evaluation:
 
 | Command | Result |
 |---|---|
-| `uv run pytest` | 212 passed (includes 6 `data` tests and the hash-seed subprocess test) |
+| `uv run pytest` | 226 passed (includes 7 `data` tests and the hash-seed subprocess test) |
 | `uv run ruff check .` / `ruff format --check .` | Clean |
 | `run_benchmark.py` twice, `PYTHONHASHSEED` 11 and 97 | All outputs byte-identical (except run name) |
+| `streamlit run demo/streamlit_app.py` (headless) | Health `ok`; only listener 127.0.0.1 |
 | Phase 4 runs (dev, dev expanded, test) repeated with `PYTHONHASHSEED=97` | `summary.json`, item files, failure samples byte-identical; only timings/provenance differ |
-| `run_pipeline.py --dev-first 3 --text-dir data/fixtures/adversarial --dry-run` | Unchanged after Phase 4: worst case US$ 0.0937 |
+| `run_pipeline.py --dev-first 3 --text-dir data/fixtures/adversarial --dry-run` | `--retriever bm25`: worst case US$ 0.0937; default `hybrid+rerank`: US$ 0.0935 |
 
 Project LLM spend so far: US$ 0.00.
 
@@ -113,7 +124,8 @@ Project LLM spend so far: US$ 0.00.
 
 ## Pending tasks / next recommended action
 
-1. Finish the minimum publishable version (steps 2–5 above), then stop for owner review.
+1. Owner: capture a screenshot or GIF of the demo for the README slot; decide when to make
+   the repository public; authorize Phase 5.
 2. **Deferred: paid pilot** — `ANTHROPIC_API_KEY` in `.env`, then
    `uv run --env-file .env python scripts/run_pipeline.py --dev-first 3 --text-dir
    data/fixtures/adversarial --provider anthropic --max-usd 0.25`. After it: run the extraction

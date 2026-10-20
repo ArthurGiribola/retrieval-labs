@@ -421,3 +421,43 @@ Entry template:
   from tuning on the evaluation set. The cross-encoder reranker, which was not significant on
   dev, was significant on test. A cheap, targeted query fix matched the neural reranker at
   roughly 1/1400 of the query latency.
+
+## LOG-014 — The demo's first latency figure included model loading
+
+- **Date / Phase:** 2026-10-20 / minimum publishable version
+- **Category:** bug
+- **Context:** The Streamlit demo reports how long retrieval took for the selected contract.
+- **The problem:** The timer started before the cached `load_retriever` call, so the first
+  view of the first contract counted loading both models as retrieval time.
+- **How it was found:** A Streamlit `AppTest` run printed "retrieval with `hybrid+rerank`
+  took 20.3 s" for a 13,038-character contract whose embeddings were already cached.
+- **Impact if missed:** The demo would have shown a latency ten times the measured one,
+  contradicting the README and `docs/EVALUATION.md`.
+- **Fix / decision:** Load the contract and the retriever before starting the timer. The same
+  contract then showed 3.25 s; two others 2.15 s (39,727 characters) and 0.62 s (3,595
+  characters). Caption now states what the time includes. Fixed before the first commit of the
+  demo.
+- **Evidence:** `demo/streamlit_app.py` (`retrieve`); AppTest output before and after.
+- **Interview version:** My demo showed 20 seconds for a step I had measured at about two,
+  because the timer also covered lazy model loading. Every number a UI shows is a
+  measurement claim, so it needs the same scrutiny as the benchmark.
+
+## LOG-015 — Streamlit listens on the network and sends usage statistics by default
+
+- **Date / Phase:** 2026-10-20 / minimum publishable version
+- **Category:** risk
+- **Context:** First headless start of the demo with `streamlit run`.
+- **The problem:** The startup log printed a Network URL (`0.0.0.0` and `::` listeners, per
+  `netstat`) and an External URL, and "Collecting usage statistics". A demo that shows contract
+  text was reachable from the local network, and the framework phoned home, neither of which
+  the brief allows without a decision (Section 18; deployment is Phase 7).
+- **How it was found:** The Streamlit startup log and `netstat -ano` for the port.
+- **Impact if missed:** Anyone on the same network could open the demo; telemetry left the
+  machine without the owner knowing.
+- **Fix / decision:** `.streamlit/config.toml` sets `server.address = "localhost"` and
+  `browser.gatherUsageStats = false`. After the change, the only listener was `127.0.0.1`, the
+  log showed a single local URL, and the health endpoint answered `ok` via `localhost`.
+- **Evidence:** `.streamlit/config.toml`; `Get-NetTCPConnection` output before and after.
+- **Interview version:** Running the demo for the first time, I noticed Streamlit bound to all
+  interfaces and enabled telemetry by default. For a tool that displays contracts, I made it
+  local-only and opt-out of telemetry in versioned config, and checked the listeners after.

@@ -250,3 +250,60 @@ Entry template:
   truncated response throws before you can read its token usage. Those are the most expensive
   calls, and they'd be invisible to my budget guard. I call the lower-level endpoint with the
   same schema, record usage first, and validate afterwards."
+
+## LOG-008 — BM25 scores depended on Python's hash seed
+
+- **Date / Phase:** 2026-10-20 / Phase 3
+- **Category:** bug
+- **Context:** Verifying that the retrieval benchmark is byte-reproducible by running it twice
+  and comparing every output file.
+- **The problem:** `summary.json` was identical across runs, but the per-item results for the
+  50/17 configuration were not. BM25 summed per-term contributions iterating over a `set` of
+  query terms. The iteration order of a set of strings depends on `PYTHONHASHSEED`, which Python
+  randomizes per process, and floating-point addition is not associative, so the same chunk got
+  slightly different scores in different processes. Near-tied chunks could swap ranks.
+- **How it was found:** The byte-comparison of two benchmark runs flagged one items file. A
+  fingerprint of all dev scores and rankings under `PYTHONHASHSEED` = 1, 2, 3 then gave three
+  different score fingerprints and two different ranking fingerprints.
+- **Impact if missed:** Benchmark numbers that change from run to run with no code change; a
+  rank swap near a cutoff changes Recall@k or MRR, and a reviewer re-running the benchmark could
+  not reproduce the published figures. The summary was unaffected this time only by luck.
+- **Fix / decision:** Sum terms in sorted order. Regression test runs BM25 in subprocesses with
+  six hash seeds and requires identical output; it failed before the fix and passes after. The
+  benchmark was re-run and verified byte-identical under two different hash seeds.
+- **Evidence:** commit `3296c55`; `tests/unit/test_bm25_determinism.py`; real-data fingerprints
+  identical for seeds 1–3 after the fix.
+- **Interview version:** "My benchmark summary matched between runs, but a byte-level comparison
+  of the per-item files didn't. The cause was summing BM25 term scores over a Python set: set
+  order changes with the hash seed, and float addition isn't associative, so scores drifted in
+  the last digits and near-ties swapped. Sorting the terms fixed it, and a subprocess test with
+  several hash seeds keeps it fixed."
+
+## LOG-009 — CUAD's "Cap On Liability" annotations are broader than its description
+
+- **Date / Phase:** 2026-10-20 / Phase 3
+- **Category:** surprising result / data quality
+- **Context:** Manual failure analysis of the first BM25 benchmark on dev (150/50 chunks):
+  all 15 items missed at Recall@5.
+- **The problem:** 14 of 15 misses are `Cap On Liability`. In most of them the gold span is not
+  a cap at all in the description's sense ("maximum amount for recovery or time limitation to
+  bring claims"): 8 are exclusions of indirect/consequential damage types, 2 are "sole remedy"
+  clauses, 2 are liability-allocation clauses, 1 a liquidated-damages statement. Our query and
+  our extraction prompt were both written from the official description.
+- **How it was found:** Reading every miss with its gold text and top-3 retrieved chunks
+  (`data/analysis/phase3-bm25-dev/`, dev split only).
+- **Impact if missed:** `Cap On Liability` looks like a weak spot of BM25 when it is largely a
+  definition mismatch. The same mismatch will affect extraction: a model following the prompt's
+  definition may correctly answer NOT_FOUND for a damages exclusion that CUAD counts as a cap,
+  which the metrics would score as an error.
+- **Fix / decision:** No change in Phase 3 (queries frozen). Documented in `docs/EVALUATION.md`.
+  For Phase 4: decide, on dev and documented, whether the query and the extraction definition
+  should follow CUAD's operational scope; apply any query change identically to all methods.
+- **Evidence:** `reports/benchmark/phase3-bm25-dev/report.md` (Cap On Liability R@5 0.781,
+  MRR 0.664 vs ≥ 0.970 R@5 for every other label at 150/50); failure table in
+  `docs/EVALUATION.md`.
+- **Interview version:** "Almost all my retrieval misses were one label, so I read every one.
+  The annotators had marked consequential-damages exclusions and sole-remedy clauses as 'cap on
+  liability', while my query followed the dataset's written definition. It was a labeling-scope
+  mismatch, not a ranking problem — the kind of thing you only find by reading failures, not
+  by staring at the average."

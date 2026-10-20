@@ -4,89 +4,90 @@ _Last updated: 2026-10-20_
 
 ## Current phase
 
-**Phase 2 — Functional MVP: complete except the paid pilot.** Implementation and the free dry
-run are done and validated. The paid pilot (3 dev contracts + 4 adversarial cases, 35 calls,
-worst case US$ 0.094, cap US$ 0.25) is **deferred by the owner for budget reasons** and can run
-at any time without code changes. Next: Phase 3 planning, prioritizing retrieval evaluation
-(no paid calls); LLM extraction metrics stay pending until the pilot runs.
+**Phase 3 — Initial Evaluation: retrieval part complete.** BM25 retrieval and retrieval-level
+presence detection are measured on dev (`docs/EVALUATION.md`). LLM extraction metrics are
+implemented and unit-tested but **pending the deferred paid pilot**. Waiting for the owner's
+choice of chunk configuration and authorization for Phase 4.
 
 ## Completed components
 
-Phase 0 — Project Foundation: uv/Python 3.12 project, pytest, ruff, LF enforcement (LOG-001),
+Phase 0 — Foundation: uv/Python 3.12, pytest, ruff, LF enforcement (LOG-001),
 `scripts/inspect_cuad.py`.
 
-Phase 1 — Dataset Preparation: `retrieval_labs.documents.Contract`; `retrieval_labs.cuad`
-(download + SHA-256, parse, splits train 306 / dev 102 / test 102, stats, hash-verified store,
-test-gold lock); `scripts/prepare_cuad.py` (byte-reproducible). LOG-002 to LOG-005.
+Phase 1 — Dataset: `Contract`; `retrieval_labs.cuad` (download + SHA-256, parse, splits
+train 306 / dev 102 / test 102, stats, hash-verified store, test-gold lock);
+`scripts/prepare_cuad.py`. LOG-002 to LOG-005.
 
-Phase 2 — Functional MVP (so far):
+Phase 2 — Functional MVP (complete except the paid pilot): chunking, in-house BM25 (LOG-006),
+queries, evidence verification, nonce-framed prompt, `Extractor` interface, `FakeExtractor`,
+`AnthropicExtractor` (LOG-007), spend ledger, `pipeline.py`, `scripts/run_pipeline.py`,
+adversarial fixtures with pre-registered expectations.
 
-- `clauses.py`: 5 clause types grouped into 4 report sections (renewal = term + notice).
-- `ingestion/chunking.py`: word windows (150 words, 50 overlap) as exact source slices.
-- `retrieval/`: shared interface; in-house BM25 with Lucene idf, k1 1.2, b 0.75 (LOG-006);
-  one fixed query per clause type written from public CUAD category descriptions.
-- `extraction/`: answer vs. result schemas; passage selection and quote verification
-  (`extracted_text` is the contract's own slice, verbatim by construction); nonce-framed prompt;
-  provider-neutral `Extractor`; `FakeExtractor`; `AnthropicExtractor` (Claude Haiku 5.5, effort
-  medium, max_tokens 4000, cost-safe parsing, LOG-007); spend ledger with run cap and US$ 20
-  project budget.
-- `pipeline.py` + `scripts/run_pipeline.py` (dry run, fake and paid providers).
-- `data/fixtures/adversarial/`: 4 prompt-injection cases with expectations pre-registered in
-  `EXPECTED.md`.
+Phase 3 — Initial Evaluation:
+
+- `retrieval/contract_search.py`: the retrieval path shared by the pipeline and the benchmark.
+- `evaluation/`: CUAD label mapping; pre-registered relevance criterion
+  (overlap / min(chunk, span) ≥ 0.5) with sensitivity criteria; retrieval and presence metrics;
+  extraction metrics (EM, token P/R/F1; not yet run); `retrieval_eval.py`.
+- `scripts/run_benchmark.py`: deterministic reports in `reports/benchmark/<run>/`; failure
+  samples with contract text in git-ignored `data/analysis/`; test split requires `--final`.
+- Run `reports/benchmark/phase3-bm25-dev/` (dev, grid 50/17, 100/33, 150/50).
+- `docs/EVALUATION.md`; LOG-008 (hash-seed nondeterminism, fixed), LOG-009 (Cap On Liability
+  annotation scope).
+
+## Phase 3 headline (dev, BM25, micro over 239 answerable items)
+
+| Chunking | R@1 | R@5 | MRR@10 |
+|---|---:|---:|---:|
+| 50/17 | 0.736 | 0.900 | 0.810 |
+| 100/33 | 0.795 | 0.916 | 0.849 |
+| 150/50 | 0.787 | 0.937 | 0.851 |
 
 ## Tests executed
 
 | Command | Result |
 |---|---|
-| `uv run pytest` | 140 passed (includes 6 `data` tests on the real prepared dataset) |
+| `uv run pytest` | 177 passed (includes 6 `data` tests and the hash-seed subprocess test) |
 | `uv run ruff check .` / `ruff format --check .` | Clean |
-| `run_pipeline.py --dev-first 1 --provider fake` | Real dev contract processed end to end (fake answers) |
-| `run_pipeline.py --dev-first 3 --text-dir data/fixtures/adversarial --dry-run` | 35 calls planned; worst case US$ 0.0937 |
+| `run_benchmark.py` twice, `PYTHONHASHSEED` 11 and 97 | All outputs byte-identical (except run name) |
+| `run_pipeline.py --dev-first 3 --text-dir data/fixtures/adversarial --dry-run` | Unchanged after Phase 3 refactor: worst case US$ 0.0937 |
 
-No paid API call has been made. Project LLM spend so far: US$ 0.00.
+Project LLM spend so far: US$ 0.00.
 
 ## Important technical decisions
 
-1. BM25 implemented in-house with Lucene's always-positive idf (LOG-006).
-2. 5 extraction calls per contract (one per CUAD-aligned clause type), 4 report sections.
-3. Quotes verified against retrieved passages (exact, then whitespace/quote/dash tolerant);
-   unverifiable FOUND is downgraded to UNCERTAIN.
-4. `messages.create` + manual validation instead of `messages.parse`, so every billed call is
-   recorded (LOG-007).
-5. Inference modules may not import `retrieval_labs.cuad`; only `anthropic_extractor.py`
-   imports the vendor SDK (both enforced by tests).
-6. Chunks with zero BM25 score are never returned; a clause with no candidates is NOT_FOUND
-   without a model call.
+1. Relevance criterion fixed before experiments; any-overlap and containment are sensitivity only.
+2. Phase 3 uses dev only; test runs once at the end of Phase 4 with all four methods frozen.
+3. Presence thresholds fit on train, reported on dev.
+4. Benchmark and application share `ContractSearch`, so they cannot drift apart.
+5. Queries frozen during Phase 3; failure analysis informs Phase 4.
+6. Extraction path must stay runnable (CLAUDE.md); its tests passed unchanged after the refactor.
 
-## Open issues for Phase 3
+## Decisions needed from the owner
 
-- **Long gold spans vs. chunk size (owner's observation).** With 150-word windows and 50-word
-  overlap, only runs of up to 51 words are guaranteed to fit inside a single chunk
-  (`tests/unit/test_chunking.py` documents the bound and its limit). Gold spans longer than
-  that, common in `Cap On Liability` and `Renewal Term`, may straddle chunk boundaries. The
-  Phase 3 relevance criterion must handle partial overlap explicitly (e.g. count a chunk as
-  relevant if it overlaps a gold span by a defined fraction of the span or of the chunk), and
-  extraction can only quote what the retrieved passages contain: a clause cut by a passage
-  boundary can fail verification and end as UNCERTAIN (seen in a unit test with tiny chunks).
-- Dev contracts are longer than test contracts (median 44.5k vs 25.7k chars, LOG-004).
-- Verification proves a quote exists, not that it is a legitimate clause: an injected sentence
-  quoted by the model would verify. The adversarial pilot measures this.
+1. **Chunk configuration for Phase 4** (dev results above; 100/33 and 150/50 are within one or
+   two items of each other on R@1 and MRR).
+2. **Cap On Liability scope (LOG-009):** keep the query and extraction definition aligned to
+   CUAD's written description, or revise them on dev to CUAD's operational scope (damage
+   exclusions, sole-remedy clauses), documented and applied to all methods.
 
 ## Pending tasks / next recommended action
 
-1. Phase 3 plan (retrieval evaluation first) — awaiting owner review.
-2. **Deferred: paid pilot.** When authorized: owner puts `ANTHROPIC_API_KEY` in `.env`, then
+1. Owner decisions above, then Phase 4 planning (dense, hybrid, hybrid + reranking).
+2. **Deferred: paid pilot** — `ANTHROPIC_API_KEY` in `.env`, then
    `uv run --env-file .env python scripts/run_pipeline.py --dev-first 3 --text-dir
-   data/fixtures/adversarial --provider anthropic --max-usd 0.25`; analyze statuses,
-   verification rejections, adversarial results vs. `EXPECTED.md`, measured tokens vs. the
-   worst-case bound; record findings in the ENGINEERING_LOG. LLM extraction metrics remain
-   pending until then.
+   data/fixtures/adversarial --provider anthropic --max-usd 0.25`. After it: run the extraction
+   metrics, compare adversarial results with `EXPECTED.md`, measured tokens with the bound.
+   Note for the pilot: the extraction definition of Cap On Liability may score as errors the
+   damage exclusions CUAD counts as caps (LOG-009).
 
 ## Known problems / risks
 
-- Few answerable test contracts for some labels (16–29); per-label test metrics will be noisy.
-- 13 overlapping gold span pairs; metrics must not assume disjoint spans.
-- Near-duplicate contracts are not detected.
-- LLM outputs are not deterministic (Haiku 5.5 rejects non-default sampling parameters); raw
-  outputs and model settings are stored with every run.
-- Playbook perspective for renewal notice (customer vs. vendor) undefined (Phase 5).
+- Dev contracts are longer than test contracts (LOG-004); dev and test results not comparable.
+- Small per-label samples (21–89 answerable dev items); no confidence intervals yet.
+- Retrieval-level presence detection is weak for Termination for Convenience and the renewal
+  notice period (AUROC ≈ 0.74–0.82).
+- Long gold spans straddle chunks; extraction can only quote what retrieved passages contain.
+- Verification proves a quote exists, not that it is a legitimate clause (adversarial pilot).
+- Near-duplicate contracts are not detected; LLM outputs are not deterministic.
+- Playbook perspective for renewal notice undefined (Phase 5).

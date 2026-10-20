@@ -22,6 +22,8 @@ data/raw/*
 data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
+data/runs/
+data/llm_ledger.jsonl
 
 # Model weights and caches
 models/

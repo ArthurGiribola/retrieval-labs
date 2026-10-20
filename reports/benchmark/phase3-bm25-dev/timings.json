@@ -1,0 +1,44 @@
+{
+  "words100-overlap33": {
+    "index_build": {
+      "count": 102,
+      "mean_ms": 8.342,
+      "median_ms": 5.681,
+      "p95_ms": 30.326
+    },
+    "query": {
+      "count": 510,
+      "mean_ms": 0.594,
+      "median_ms": 0.425,
+      "p95_ms": 1.979
+    }
+  },
+  "words150-overlap50": {
+    "index_build": {
+      "count": 102,
+      "mean_ms": 7.781,
+      "median_ms": 5.246,
+      "p95_ms": 29.336
+    },
+    "query": {
+      "count": 510,
+      "mean_ms": 0.436,
+      "median_ms": 0.322,
+      "p95_ms": 1.3
+    }
+  },
+  "words50-overlap17": {
+    "index_build": {
+      "count": 102,
+      "mean_ms": 9.238,
+      "median_ms": 6.204,
+      "p95_ms": 33.133
+    },
+    "query": {
+      "count": 510,
+      "mean_ms": 1.078,
+      "median_ms": 0.723,
+      "p95_ms": 3.523
+    }
+  }
+}

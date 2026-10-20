@@ -4,7 +4,13 @@ _Last updated: 2026-10-20_
 
 ## Current phase
 
-**Phase 4 — Retrieval Comparison: complete.** Waiting for owner authorization to start Phase 5.
+**Minimum publishable version (brief 21.2, D-002): in progress.** Phase 4 complete and
+approved; the application retrieves with hybrid + reranking (D-001). Steps: 1. shared retriever
+factory, pipeline defaults to `hybrid+rerank` — done (dev benchmark re-run after the refactor:
+item files and run summaries identical); 2. Streamlit demo; 3. tests; 4. English README;
+5. close and stop. Phase 5 starts only after owner authorization.
+
+**Phase 4 — Retrieval Comparison: complete.**
 Frozen setup: bge-small-en-v1.5 @5c38ec7c, ms-marco-MiniLM-L6-v2 @233902d2, 150/50 chunks,
 RRF k=60, 20 rerank candidates, queries unchanged from Phase 3, paired contract-level bootstrap
 (95%), "BM25 + expanded query" as a separate dev-tuned row. Full results and observations:
@@ -107,10 +113,7 @@ Project LLM spend so far: US$ 0.00.
 
 ## Pending tasks / next recommended action
 
-1. **Owner decision for Phase 5:** which retrieval method the application uses. Evidence:
-   hybrid + reranking is the best fair method (~430 ms/query on CPU); `bm25-expanded` has close
-   point estimates at ~0.3 ms but its query was tuned on dev; hybrid alone must not be used for
-   presence detection (LOG-012). Then authorize Phase 5.
+1. Finish the minimum publishable version (steps 2–5 above), then stop for owner review.
 2. **Deferred: paid pilot** — `ANTHROPIC_API_KEY` in `.env`, then
    `uv run --env-file .env python scripts/run_pipeline.py --dev-first 3 --text-dir
    data/fixtures/adversarial --provider anthropic --max-usd 0.25`. After it: run the extraction

@@ -33,7 +33,8 @@ live in [docs/DATASET.md](docs/DATASET.md).
   `uv run pytest -m "not data"` runs only the self-contained tests)
 - Lint: `uv run ruff check .` — Format: `uv run ruff format .`
 - Pipeline, free: `uv run python scripts/run_pipeline.py --dev-first 3 --dry-run` (or
-  `--provider fake`). Paid (only after owner approval of a cost estimate):
+  `--provider fake`). Retrieval defaults to `hybrid+rerank` (D-001, loads both models);
+  `--retriever bm25` needs no models. Paid (only after owner approval of a cost estimate):
   `uv run --env-file .env python scripts/run_pipeline.py ... --provider anthropic --max-usd X`.
   Every paid call is budget-checked and recorded in `data/llm_ledger.jsonl` (git-ignored).
 - Never read, print or log `.env` or API keys.

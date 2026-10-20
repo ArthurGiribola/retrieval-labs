@@ -22,7 +22,6 @@ import json
 import platform
 import subprocess
 import sys
-import time
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -55,17 +54,16 @@ from retrieval_labs.evaluation.retrieval_eval import (
     summarize_ranking,
 )
 from retrieval_labs.ingestion.chunking import ChunkingConfig, chunk_contract
+from retrieval_labs.retrieval import factory
 from retrieval_labs.retrieval.base import Retriever
 from retrieval_labs.retrieval.bm25 import BM25Retriever
 from retrieval_labs.retrieval.queries import EXPANDED_QUERIES, QUERIES
 
-METHODS = ("bm25", "dense", "hybrid", "hybrid+rerank", "bm25-expanded")
-DENSE_BASED = ("dense", "hybrid", "hybrid+rerank")
+METHODS = (*factory.METHODS, "bm25-expanded")
 # Dev-tuned rows (LOG-010): reported separately, never part of the fair comparison.
 TUNED_ON_DEV = {"bm25-expanded"}
 METHOD_QUERIES = {"bm25-expanded": EXPANDED_QUERIES}
 BASELINE = "bm25"
-CACHE_DIR = Path("data/cache/embeddings")
 CI_METRICS = ("recall@1", "recall@5", f"mrr@{MRR_CUTOFF}")
 
 
@@ -90,32 +88,11 @@ def git_provenance() -> dict[str, Any]:
 
 
 def build_retrievers(methods: list[str]) -> tuple[dict[str, Retriever], dict[str, Any]]:
-    """Instantiate the requested methods, loading each model once (model imports are lazy)."""
-    retrievers: dict[str, Retriever] = {"bm25": BM25Retriever(), "bm25-expanded": BM25Retriever()}
-    info: dict[str, Any] = {}
-    if any(m in DENSE_BASED for m in methods):
-        from retrieval_labs.retrieval.dense import DenseRetriever
-        from retrieval_labs.retrieval.embeddings import CachedEmbedder, SentenceTransformerEmbedder
-        from retrieval_labs.retrieval.hybrid import HybridRetriever
-
-        started = time.perf_counter()
-        model = SentenceTransformerEmbedder()
-        info["embedder_load_s"] = round(time.perf_counter() - started, 3)
-        info["embedder_max_seq_length"] = model.max_seq_length
-        embedder = CachedEmbedder(model, CACHE_DIR, memoize_queries=False)
-        info["embedder"] = embedder
-        retrievers["dense"] = DenseRetriever(embedder)
-        retrievers["hybrid"] = HybridRetriever([retrievers["bm25"], retrievers["dense"]])
-    if "hybrid+rerank" in methods:
-        from retrieval_labs.retrieval.reranker import (
-            RerankingRetriever,
-            SentenceTransformerCrossScorer,
-        )
-
-        started = time.perf_counter()
-        scorer = SentenceTransformerCrossScorer()
-        info["reranker_load_s"] = round(time.perf_counter() - started, 3)
-        retrievers["hybrid+rerank"] = RerankingRetriever(retrievers["hybrid"], scorer)
+    """Shared factory, plus the dev-tuned rows (same retriever, different queries)."""
+    base = list(dict.fromkeys(m for m in methods if m not in TUNED_ON_DEV))
+    retrievers, info = factory.build_retrievers(base)
+    for method in TUNED_ON_DEV & set(methods):
+        retrievers[method] = BM25Retriever()
     return {m: retrievers[m] for m in methods}, info
 
 
@@ -387,7 +364,7 @@ def main() -> int:
             records, timing = evaluate_split(contracts, gold, retriever, config, queries)
             cache = (
                 {"hits": embedder.hits - hits_before[0], "misses": embedder.misses - hits_before[1]}
-                if embedder and method in DENSE_BASED
+                if embedder and method in factory.DENSE_BASED
                 else None
             )
             fit_records, _ = evaluate_split(fit_contracts, fit_gold, retriever, config, queries)

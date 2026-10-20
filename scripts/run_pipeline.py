@@ -9,8 +9,12 @@ Examples:
     uv run --env-file .env python scripts/run_pipeline.py --dev-first 3 \
         --text-dir data/fixtures/adversarial --provider anthropic --max-usd 0.25
 
-Contracts come from the prepared dataset (train and dev splits only) or from UTF-8 text
-files. Reports are written to data/runs/<run_id>/.
+    # Free dry run with the Phase 3 BM25 retriever (no model downloads)
+    uv run python scripts/run_pipeline.py --dev-first 3 --dry-run --retriever bm25
+
+Retrieval defaults to the method chosen after Phase 4 (hybrid + reranking). Contracts come
+from the prepared dataset (train and dev splits only) or from UTF-8 text files. Reports are
+written to data/runs/<run_id>/.
 """
 
 from __future__ import annotations
@@ -34,7 +38,7 @@ from retrieval_labs.extraction.llm import (
     worst_case_cost_usd,
 )
 from retrieval_labs.pipeline import ContractReport, PipelineConfig, analyze_contract
-from retrieval_labs.retrieval.bm25 import BM25Retriever
+from retrieval_labs.retrieval.factory import APPLICATION_METHOD, METHODS, build_retriever
 
 PAID_MODEL = "claude-haiku-5-5"
 PAID_MAX_TOKENS = 4000
@@ -102,6 +106,7 @@ def main() -> int:
     parser.add_argument("--provider", choices=["fake", "anthropic"], default="fake")
     parser.add_argument("--dry-run", action="store_true", help="build prompts, call nothing")
     parser.add_argument("--max-usd", type=float, help="run spending cap (required for anthropic)")
+    parser.add_argument("--retriever", choices=METHODS, default=APPLICATION_METHOD)
     parser.add_argument("--out-dir", type=Path, default=Path("data/runs"))
     args = parser.parse_args()
 
@@ -114,13 +119,12 @@ def main() -> int:
     run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ") + f"-{extractor.provider}"
     ledger = SpendLedger(DEFAULT_LEDGER_PATH, run_id, args.max_usd) if paid else None
     config = PipelineConfig()
+    retriever = build_retriever(args.retriever)
 
     reports: list[ContractReport] = []
     try:
         for contract in contracts:
-            reports.append(
-                analyze_contract(contract, BM25Retriever(), extractor, config, run_id, ledger)
-            )
+            reports.append(analyze_contract(contract, retriever, extractor, config, run_id, ledger))
     except BudgetExceededError as exc:
         print(f"stopped: {exc}", file=sys.stderr)
     finally:

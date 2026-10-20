@@ -13,6 +13,9 @@ dependencies = [
 ]
 
 [dependency-groups]
+demo = [
+    "streamlit==1.65.0",
+]
 dev = [
     "pytest>=9.1.1",
     "ruff>=0.17.1",
@@ -23,6 +26,8 @@ requires = ["uv_build>=0.8,<0.14"]
 build-backend = "uv_build"
 
 [tool.uv]
+# `uv sync` installs the demo too, so `uv run pytest` always runs the demo tests.
+default-groups = ["dev", "demo"]
 # Packages added from Phase 4 on use releases at least two weeks old (LOG-011). Transitive
 # pins below keep new dependencies inside that rule; earlier phases' lock is unchanged.
 constraint-dependencies = [
@@ -33,6 +38,10 @@ constraint-dependencies = [
     "narwhals==2.26.0",
     "setuptools==84.0.0",
     "tokenizers==0.23.2",
+    # demo group (streamlit), same rule
+    "httptools==0.8.0",
+    "starlette==1.7.0",
+    "websockets==17.2",
 ]
 
 [tool.ruff]

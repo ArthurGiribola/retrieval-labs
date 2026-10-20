@@ -4,9 +4,11 @@ _Last updated: 2026-10-20_
 
 ## Current phase
 
-**Phase 2 — Functional MVP: in progress, paused before the paid pilot.** Steps 1–7 of the
-Phase 2 plan are done (implementation and a free dry run). The paid pilot (step 8) waits for
-the owner's authorization.
+**Phase 2 — Functional MVP: complete except the paid pilot.** Implementation and the free dry
+run are done and validated. The paid pilot (3 dev contracts + 4 adversarial cases, 35 calls,
+worst case US$ 0.094, cap US$ 0.25) is **deferred by the owner for budget reasons** and can run
+at any time without code changes. Next: Phase 3 planning, prioritizing retrieval evaluation
+(no paid calls); LLM extraction metrics stay pending until the pilot runs.
 
 ## Completed components
 
@@ -72,11 +74,13 @@ No paid API call has been made. Project LLM spend so far: US$ 0.00.
 
 ## Pending tasks / next recommended action
 
-1. **Owner authorization for the paid pilot** (3 dev contracts + 4 adversarial cases, 35 calls,
-   cap US$ 0.25). Requires `ANTHROPIC_API_KEY` in `.env`.
-2. Analyze pilot outputs: statuses, verification rejections, adversarial results vs.
-   `EXPECTED.md`, measured tokens vs. the worst-case bound.
-3. Record findings (ENGINEERING_LOG), finish Phase 2 docs, stop for Phase 3 authorization.
+1. Phase 3 plan (retrieval evaluation first) — awaiting owner review.
+2. **Deferred: paid pilot.** When authorized: owner puts `ANTHROPIC_API_KEY` in `.env`, then
+   `uv run --env-file .env python scripts/run_pipeline.py --dev-first 3 --text-dir
+   data/fixtures/adversarial --provider anthropic --max-usd 0.25`; analyze statuses,
+   verification rejections, adversarial results vs. `EXPECTED.md`, measured tokens vs. the
+   worst-case bound; record findings in the ENGINEERING_LOG. LLM extraction metrics remain
+   pending until then.
 
 ## Known problems / risks
 

@@ -20,6 +20,9 @@ live in [docs/DATASET.md](docs/DATASET.md).
 - Ask before: paid API calls (estimate cost first; total LLM budget < US$ 20), downloads of large
   assets, cloud deployment, creating GitHub resources, or destructive operations.
 - Explanations to the owner are in Portuguese; code, commits and documentation are in English.
+- Keep the extraction path runnable at all times: the paid pilot is deferred, not dropped.
+  Changes in later phases must keep the `FakeExtractor` and stand-in Anthropic client tests
+  passing, so the pilot can run at any moment without rework.
 
 ## Environment
 

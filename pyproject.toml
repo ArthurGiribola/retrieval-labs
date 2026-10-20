@@ -37,6 +37,7 @@ select = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["tests"]
 addopts = ["-ra", "--strict-markers", "--import-mode=importlib"]
 markers = [
     "data: requires the real CUAD dataset prepared under data/ (skipped when absent)",

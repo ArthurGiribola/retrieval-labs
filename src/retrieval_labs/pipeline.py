@@ -19,9 +19,9 @@ from retrieval_labs.extraction.evidence import build_result, select_passages
 from retrieval_labs.extraction.llm import Extractor, build_request
 from retrieval_labs.extraction.prompt import PROMPT_VERSION
 from retrieval_labs.extraction.schema import ClauseResult, LLMUsage, Status
-from retrieval_labs.ingestion.chunking import ChunkingConfig, chunk_contract
+from retrieval_labs.ingestion.chunking import ChunkingConfig
 from retrieval_labs.retrieval.base import Retriever
-from retrieval_labs.retrieval.queries import QUERIES
+from retrieval_labs.retrieval.contract_search import ContractSearch
 
 
 class PipelineConfig(BaseModel):
@@ -100,19 +100,14 @@ def analyze_contract(
     timings: dict[str, float] = defaultdict(float)
     started = time.perf_counter()
 
-    t = time.perf_counter()
-    chunks = chunk_contract(contract, config.chunking)
-    timings["chunking"] = time.perf_counter() - t
-
-    t = time.perf_counter()
-    index = retriever.build(chunks) if chunks else None
-    timings["indexing"] = time.perf_counter() - t
+    search = ContractSearch(contract, retriever, config.chunking)
+    timings.update(search.timings_s)
 
     results: list[ClauseResult] = []
     usages: list[LLMUsage] = []
     for clause_type in ClauseType:
         t = time.perf_counter()
-        retrieved = index.search(QUERIES[clause_type], config.top_k) if index else []
+        retrieved = search.search(clause_type, config.top_k)
         passages = select_passages(retrieved, contract.text)
         timings["retrieval"] += time.perf_counter() - t
         chunk_ids = [r.chunk_id for r in retrieved]
@@ -161,7 +156,7 @@ def analyze_contract(
         contract_id=contract.contract_id,
         title=contract.title,
         run=run_metadata(run_id, retriever, extractor, config),
-        chunk_count=len(chunks),
+        chunk_count=len(search.chunks),
         timings_s={name: round(value, 4) for name, value in timings.items()},
         total_usage=_sum_usage(usages),
         results=results,

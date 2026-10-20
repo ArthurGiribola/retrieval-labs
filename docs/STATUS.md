@@ -15,6 +15,8 @@ _Last updated: 2026-10-20_
 - CUAD v1 `data.zip` downloaded locally and verified (SHA-256 in `docs/DATASET.md`).
 - `scripts/inspect_cuad.py`: reproducible inspection of schema, splits, labels and offsets.
 - Documentation: `CLAUDE.md`, `docs/DATASET.md`, this file. Brief moved to `docs/PROJECT_BRIEF.md`.
+- `.gitattributes` enforcing LF line endings (see LOG-001).
+- `docs/ENGINEERING_LOG.md` with entries LOG-001 and LOG-002.
 
 ## Tests executed
 

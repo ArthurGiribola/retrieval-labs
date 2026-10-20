@@ -13,6 +13,10 @@ live in [docs/DATASET.md](docs/DATASET.md).
 - Do not change scope or technology choices silently; record decisions in `docs/STATUS.md`
   (and later `docs/DECISIONS.md`, once it has real content).
 - Update `docs/STATUS.md` at the end of every phase.
+- Maintain `docs/ENGINEERING_LOG.md`, an interview-oriented engineering diary. Add an entry
+  (`LOG-NNN`, following the template in that file) whenever a bug, risk, technical decision or
+  surprising result is **confirmed by code, data or command output** — never for speculation.
+  Include decisions and surprising results, not only bugs. Entries are append-only.
 - Ask before: paid API calls (estimate cost first; total LLM budget < US$ 20), downloads of large
   assets, cloud deployment, creating GitHub resources, or destructive operations.
 - Explanations to the owner are in Portuguese; code, commits and documentation are in English.

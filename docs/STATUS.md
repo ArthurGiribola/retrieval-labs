@@ -4,10 +4,32 @@ _Last updated: 2026-10-20_
 
 ## Current phase
 
-**Phase 3 — Initial Evaluation: retrieval part complete.** BM25 retrieval and retrieval-level
-presence detection are measured on dev (`docs/EVALUATION.md`). LLM extraction metrics are
-implemented and unit-tested but **pending the deferred paid pilot**. Waiting for the owner's
-choice of chunk configuration and authorization for Phase 4.
+**Phase 4 — Retrieval Comparison: in progress (steps 1–6 and step 8 code done; step 7 running).**
+Plan approved: bge-small-en-v1.5 @5c38ec7c, ms-marco-MiniLM-L6-v2 @233902d2, 150/50 chunks,
+RRF k=60, 20 rerank candidates, no tuning on dev, paired contract-level bootstrap (95%),
+"BM25 + expanded query" as a separate dev-tuned row (also in the final test run). **Stop at
+step 9 and ask the owner before the single test-split run.**
+
+Phase 4 progress:
+
+1. Dependencies (sentence-transformers 6.1.0, torch 2.14.1 CPU, numpy 2.5.3) — done; two-week
+   release convention applied from Phase 4 on, earlier lock unchanged (LOG-011).
+2. Dense retrieval + embedding cache (`data/cache/embeddings/`, git-ignored) — done.
+3. Hybrid RRF — done. 4. Reranker — done. 5. Bootstrap + multi-method benchmark — done
+   (re-running the Phase 3 grid reproduces it exactly).
+6. Models downloaded and measured: 134.5 MB + 91.8 MB on disk; 0.64% of dev chunks exceed 512
+   tokens (truncated); CPU throughput 24.8 chunks/s (embedding), 40.8 pairs/s (reranker).
+7. **Running / to re-run if interrupted:** `uv run python scripts/run_benchmark.py --run-name
+   phase4-dev --method bm25 --method dense --method hybrid --method hybrid+rerank`
+   (~40 min the first time; embeddings are cached per contract, so a rerun resumes faster).
+   Then verify byte-reproducibility with a second run, and commit `reports/benchmark/phase4-dev/`.
+8. Code for `bm25-expanded` done (commit 122ada7); its dev run is still to do
+   (`--method bm25 --method bm25-expanded`).
+9. Pause for owner authorization of the single test run. 10. Docs and stop.
+
+Phase 3 (complete): BM25 retrieval and retrieval-level presence measured on dev
+(`docs/EVALUATION.md`). LLM extraction metrics implemented and unit-tested, **pending the
+deferred paid pilot**.
 
 ## Completed components
 

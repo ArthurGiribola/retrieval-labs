@@ -4,7 +4,7 @@ _Last updated: 2026-10-20_
 
 ## Current phase
 
-**Phase 4 — Retrieval Comparison: in progress (steps 1–6 and step 8 code done; step 7 running).**
+**Phase 4 — Retrieval Comparison: in progress (steps 1–8 done; waiting at step 9).**
 Plan approved: bge-small-en-v1.5 @5c38ec7c, ms-marco-MiniLM-L6-v2 @233902d2, 150/50 chunks,
 RRF k=60, 20 rerank candidates, no tuning on dev, paired contract-level bootstrap (95%),
 "BM25 + expanded query" as a separate dev-tuned row (also in the final test run). **Stop at
@@ -19,13 +19,24 @@ Phase 4 progress:
    (re-running the Phase 3 grid reproduces it exactly).
 6. Models downloaded and measured: 134.5 MB + 91.8 MB on disk; 0.64% of dev chunks exceed 512
    tokens (truncated); CPU throughput 24.8 chunks/s (embedding), 40.8 pairs/s (reranker).
-7. **Running / to re-run if interrupted:** `uv run python scripts/run_benchmark.py --run-name
-   phase4-dev --method bm25 --method dense --method hybrid --method hybrid+rerank`
-   (~40 min the first time; embeddings are cached per contract, so a rerun resumes faster).
-   Then verify byte-reproducibility with a second run, and commit `reports/benchmark/phase4-dev/`.
-8. Code for `bm25-expanded` done (commit 122ada7); its dev run is still to do
-   (`--method bm25 --method bm25-expanded`).
-9. Pause for owner authorization of the single test run. 10. Docs and stop.
+7. Dev benchmark done: `reports/benchmark/phase4-dev/`. A second run (`PYTHONHASHSEED=97`,
+   warm cache) gave byte-identical `summary.json`, item files and failure samples; only timings
+   and provenance differ. First-run dense latency p95 includes 34 cache misses.
+8. `bm25-expanded` dev run done: `reports/benchmark/phase4-dev-bm25-expanded/`.
+9. **Next: pause for owner authorization of the single test run** (`--final`, all methods
+   frozen). 10. Docs and stop.
+
+Phase 4 dev headline (150/50, micro over 239 answerable items, 95% bootstrap CI; Δ paired vs BM25):
+
+| Method | R@1 | R@5 | MRR@10 | ΔR@5 vs BM25 | Presence AUROC (macro) |
+|---|---:|---:|---:|---|---:|
+| bm25 | 0.787 | 0.937 | 0.851 | — | 0.842 |
+| dense | 0.611 | 0.866 | 0.720 | -0.071 [-0.121, -0.027] | 0.796 |
+| hybrid | 0.745 | 0.937 | 0.828 | +0.000 [-0.031, +0.033] | 0.597 (LOG-012) |
+| hybrid+rerank | 0.791 | 0.962 | 0.868 | +0.025 [+0.000, +0.052] | 0.883 |
+| bm25-expanded † | 0.870 | 0.992 | 0.918 | +0.054 [+0.027, +0.083] | 0.852 |
+
+† Tuned on dev; optimistic by construction, not part of the fair comparison.
 
 Phase 3 (complete): BM25 retrieval and retrieval-level presence measured on dev
 (`docs/EVALUATION.md`). LLM extraction metrics implemented and unit-tested, **pending the

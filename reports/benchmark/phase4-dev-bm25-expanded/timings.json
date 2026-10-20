@@ -1,0 +1,33 @@
+{
+  "models": {},
+  "runs": {
+    "bm25": {
+      "index_build": {
+        "count": 102,
+        "mean_ms": 8.302,
+        "median_ms": 5.534,
+        "p95_ms": 29.302
+      },
+      "query": {
+        "count": 510,
+        "mean_ms": 0.461,
+        "median_ms": 0.326,
+        "p95_ms": 1.439
+      }
+    },
+    "bm25-expanded \u2020": {
+      "index_build": {
+        "count": 102,
+        "mean_ms": 8.247,
+        "median_ms": 5.788,
+        "p95_ms": 29.483
+      },
+      "query": {
+        "count": 510,
+        "mean_ms": 0.547,
+        "median_ms": 0.367,
+        "p95_ms": 1.742
+      }
+    }
+  }
+}

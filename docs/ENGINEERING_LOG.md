@@ -366,3 +366,31 @@ Entry template:
   I enforced it with the package manager, it showed I'd never actually applied it. Rather than
   silently downgrade a tested environment, I made the rule apply from that point on, pinned the
   six recent transitive dependencies explicitly, and verified every new package's release date."
+
+## LOG-012 — RRF fusion scores are useless as a presence signal
+
+- **Date / Phase:** 2026-10-20 / Phase 4
+- **Category:** surprising result
+- **Context:** Phase 4 dev benchmark (`reports/benchmark/phase4-dev/`). Presence detection uses
+  the top-1 retrieval score against a threshold fit on train, the same rule for every method.
+- **The problem:** Hybrid retrieval matches BM25 on ranking (R@5 0.937 for both) but its presence
+  detection collapses: macro AUROC 0.597, against 0.842 for BM25, 0.796 for dense and 0.883 for
+  hybrid + reranking. Reciprocal rank fusion scores `sum 1 / (k + rank)` depend only on ranks, so
+  the top-1 score says where the chunk ranked in each list, not how well it matched.
+- **How it was found:** The presence table in the run report. Counting distinct
+  `top1_score` values in `items-hybrid.jsonl`: 510 dev items take only 31 distinct values, and
+  172 of them tie at the maximum 2/61 = 0.032787 (rank 1 in both component lists).
+- **Impact if missed:** Choosing hybrid for the application because it ranks as well as BM25
+  would silently degrade the "clause absent" decision, which drives `NOT_FOUND`.
+- **Fix / decision:** No change during the dev comparison (methods are frozen before the test
+  run). The result is reported as is. Reranking restores a content-based score, which is one
+  reason hybrid + reranking has the best presence AUROC. For a hybrid-only configuration,
+  presence would need a component score (e.g. BM25 or dense top-1), to be decided later, not
+  tuned on dev.
+- **Evidence:** `reports/benchmark/phase4-dev/report.md` (presence tables);
+  `src/retrieval_labs/retrieval/hybrid.py` (fusion formula); two runs with different
+  `PYTHONHASHSEED` gave byte-identical `summary.json` and item files.
+- **Interview version:** Hybrid search with reciprocal rank fusion ranked as well as BM25, but
+  its scores were almost constant because RRF only looks at ranks, so they could not tell
+  whether a clause existed. A good ranking metric is not a good confidence signal; the
+  cross-encoder reranker fixed it by re-scoring content.

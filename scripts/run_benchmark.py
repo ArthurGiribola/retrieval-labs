@@ -23,10 +23,12 @@ import platform
 import subprocess
 import sys
 import time
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
 import retrieval_labs
+from retrieval_labs.clauses import ClauseType
 from retrieval_labs.cuad.gold import GoldAnnotation
 from retrieval_labs.cuad.labels import CuadLabel
 from retrieval_labs.cuad.splits import Split
@@ -55,9 +57,13 @@ from retrieval_labs.evaluation.retrieval_eval import (
 from retrieval_labs.ingestion.chunking import ChunkingConfig, chunk_contract
 from retrieval_labs.retrieval.base import Retriever
 from retrieval_labs.retrieval.bm25 import BM25Retriever
-from retrieval_labs.retrieval.queries import QUERIES
+from retrieval_labs.retrieval.queries import EXPANDED_QUERIES, QUERIES
 
-METHODS = ("bm25", "dense", "hybrid", "hybrid+rerank")
+METHODS = ("bm25", "dense", "hybrid", "hybrid+rerank", "bm25-expanded")
+DENSE_BASED = ("dense", "hybrid", "hybrid+rerank")
+# Dev-tuned rows (LOG-010): reported separately, never part of the fair comparison.
+TUNED_ON_DEV = {"bm25-expanded"}
+METHOD_QUERIES = {"bm25-expanded": EXPANDED_QUERIES}
 BASELINE = "bm25"
 CACHE_DIR = Path("data/cache/embeddings")
 CI_METRICS = ("recall@1", "recall@5", f"mrr@{MRR_CUTOFF}")
@@ -85,9 +91,9 @@ def git_provenance() -> dict[str, Any]:
 
 def build_retrievers(methods: list[str]) -> tuple[dict[str, Retriever], dict[str, Any]]:
     """Instantiate the requested methods, loading each model once (model imports are lazy)."""
-    retrievers: dict[str, Retriever] = {"bm25": BM25Retriever()}
+    retrievers: dict[str, Retriever] = {"bm25": BM25Retriever(), "bm25-expanded": BM25Retriever()}
     info: dict[str, Any] = {}
-    if any(m != "bm25" for m in methods):
+    if any(m in DENSE_BASED for m in methods):
         from retrieval_labs.retrieval.dense import DenseRetriever
         from retrieval_labs.retrieval.embeddings import CachedEmbedder, SentenceTransformerEmbedder
         from retrieval_labs.retrieval.hybrid import HybridRetriever
@@ -111,6 +117,11 @@ def build_retrievers(methods: list[str]) -> tuple[dict[str, Retriever], dict[str
         info["reranker_load_s"] = round(time.perf_counter() - started, 3)
         retrievers["hybrid+rerank"] = RerankingRetriever(retrievers["hybrid"], scorer)
     return {m: retrievers[m] for m in methods}, info
+
+
+def queries_sha256(queries: Mapping[ClauseType, str]) -> str:
+    payload = json.dumps({k.value: v for k, v in queries.items()}, sort_keys=True)
+    return hashlib.sha256(payload.encode()).hexdigest()
 
 
 def describe(retriever: Retriever) -> dict[str, Any]:
@@ -215,6 +226,13 @@ def render_report(summary: dict[str, Any], timings: dict[str, Any]) -> str:
             + f" | {fmt(m[f'mrr@{MRR_CUTOFF}'])} | {fmt(m[f'recall@{WORD_BUDGET}words'])} "
             f"({m['results_in_word_budget']}) | {fmt(m['span_coverage@5'])} |"
         )
+    lines += []
+    if any(r.get("tuned_on_dev") for r in runs.values()):
+        lines += [
+            "",
+            "† Tuned on dev (query expanded from the Phase 3 dev failure analysis, LOG-010). "
+            "Not part of the fair comparison; on dev its numbers are optimistic by construction.",
+        ]
     lines += [
         "",
         "## Confidence intervals (95%) and paired difference vs BM25",
@@ -359,21 +377,27 @@ def main() -> int:
             name = method if len(configs) == 1 else f"{method}/{config.label}"
             if len(methods) == 1:
                 name = config.label  # Phase 3 naming: one method, several chunkings
+            safe = name.replace("/", "_").replace("+", "-")
+            if method in TUNED_ON_DEV:
+                name += " †"
             print(f"evaluating {name} on {split.value} ...", flush=True)
             retriever = retrievers[method]
+            queries = METHOD_QUERIES.get(method, QUERIES)
             hits_before = (embedder.hits, embedder.misses) if embedder else (0, 0)
-            records, timing = evaluate_split(contracts, gold, retriever, config)
+            records, timing = evaluate_split(contracts, gold, retriever, config, queries)
             cache = (
                 {"hits": embedder.hits - hits_before[0], "misses": embedder.misses - hits_before[1]}
-                if embedder and method != "bm25"
+                if embedder and method in DENSE_BASED
                 else None
             )
-            fit_records, _ = evaluate_split(fit_contracts, fit_gold, retriever, config)
+            fit_records, _ = evaluate_split(fit_contracts, fit_gold, retriever, config, queries)
             if method == BASELINE:
                 baseline_records = records
             compare = baseline_records if method != BASELINE else None
             runs[name] = {
                 "method": method,
+                "tuned_on_dev": method in TUNED_ON_DEV,
+                "queries_sha256": queries_sha256(queries),
                 "retriever": describe(retriever),
                 "chunking": config.model_dump(),
                 "ranking": summarize_ranking(records, config),
@@ -385,7 +409,6 @@ def main() -> int:
                 "query": latency_stats(timing["query_s"]),
                 **({"embedding_cache": cache} if cache else {}),
             }
-            safe = name.replace("/", "_").replace("+", "-")
             with (run_dir / f"items-{safe}.jsonl").open("w", encoding="utf-8", newline="\n") as f:
                 for record in records:
                     line = json.dumps(
@@ -409,9 +432,7 @@ def main() -> int:
         "depth": DEPTH,
         "word_budget": WORD_BUDGET,
         "bootstrap": {"resamples": N_RESAMPLES, "seed": SEED, "confidence": CONFIDENCE},
-        "queries_sha256": hashlib.sha256(
-            json.dumps({k.value: v for k, v in QUERIES.items()}, sort_keys=True).encode()
-        ).hexdigest(),
+        "queries_sha256": queries_sha256(QUERIES),
         "dataset": {
             "archive_sha256": manifest.archive_sha256,
             "files": {name: f.sha256 for name, f in manifest.files.items()},

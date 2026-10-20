@@ -4,6 +4,7 @@ pipeline and the benchmark, so both always measure the same algorithm."""
 from __future__ import annotations
 
 import time
+from collections.abc import Mapping
 
 from retrieval_labs.clauses import ClauseType
 from retrieval_labs.documents import Contract
@@ -13,7 +14,14 @@ from retrieval_labs.retrieval.queries import QUERIES
 
 
 class ContractSearch:
-    def __init__(self, contract: Contract, retriever: Retriever, chunking: ChunkingConfig) -> None:
+    def __init__(
+        self,
+        contract: Contract,
+        retriever: Retriever,
+        chunking: ChunkingConfig,
+        queries: Mapping[ClauseType, str] = QUERIES,
+    ) -> None:
+        self._queries = queries
         started = time.perf_counter()
         self.chunks = chunk_contract(contract, chunking)
         chunked = time.perf_counter()
@@ -26,4 +34,4 @@ class ContractSearch:
     def search(self, clause_type: ClauseType, top_k: int) -> list[RetrievalResult]:
         if self._index is None:
             return []
-        return self._index.search(QUERIES[clause_type], top_k)
+        return self._index.search(self._queries[clause_type], top_k)

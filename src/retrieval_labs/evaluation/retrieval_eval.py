@@ -10,7 +10,7 @@ import math
 import statistics
 import time
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
@@ -34,6 +34,7 @@ from retrieval_labs.evaluation.retrieval_metrics import (
 from retrieval_labs.ingestion.chunking import ChunkingConfig
 from retrieval_labs.retrieval.base import Retriever
 from retrieval_labs.retrieval.contract_search import ContractSearch
+from retrieval_labs.retrieval.queries import QUERIES
 
 CUTOFFS = (1, 3, 5, 10)
 MRR_CUTOFF = 10
@@ -64,8 +65,9 @@ def evaluate_contract(
     gold: dict[CuadLabel, GoldAnnotation],
     retriever: Retriever,
     chunking: ChunkingConfig,
+    queries: Mapping[ClauseType, str] = QUERIES,
 ) -> tuple[list[ItemRecord], dict[str, Any]]:
-    search = ContractSearch(contract, retriever, chunking)  # built without gold
+    search = ContractSearch(contract, retriever, chunking, queries)  # built without gold
     query_times: list[float] = []
     records = []
     for clause_type in ClauseType:
@@ -111,6 +113,7 @@ def evaluate_split(
     gold: Sequence[GoldAnnotation],
     retriever: Retriever,
     chunking: ChunkingConfig,
+    queries: Mapping[ClauseType, str] = QUERIES,
 ) -> tuple[list[ItemRecord], dict[str, list[float]]]:
     by_contract: dict[str, dict[CuadLabel, GoldAnnotation]] = defaultdict(dict)
     for annotation in gold:
@@ -119,7 +122,7 @@ def evaluate_split(
     timings: dict[str, list[float]] = defaultdict(list)
     for contract in sorted(contracts, key=lambda c: c.contract_id):
         items, contract_timings = evaluate_contract(
-            contract, by_contract[contract.contract_id], retriever, chunking
+            contract, by_contract[contract.contract_id], retriever, chunking, queries
         )
         records.extend(items)
         timings["index_build_s"].append(contract_timings["chunking"] + contract_timings["indexing"])

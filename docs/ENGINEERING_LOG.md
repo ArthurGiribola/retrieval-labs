@@ -182,3 +182,38 @@ Entry template:
   record was split in two. My synthetic tests missed it; my real-data tests caught it. I made
   every output file pure ASCII and added that character to the fixture, so the regression is now
   covered without needing the full dataset."
+
+## LOG-006 — BM25 implemented in-house with Lucene's idf instead of using `rank-bm25`
+
+- **Date / Phase:** 2026-10-20 / Phase 2
+- **Category:** decision
+- **Context:** Choosing the BM25 implementation for the baseline. The brief lists `rank-bm25` as
+  acceptable. Our indexes are unusual: one index per contract (retrieval never leaves the
+  contract), with a median of 52 chunks per train contract (min 2, max 456).
+- **The problem:** This is a deliberate design choice, not a library bug. `rank-bm25`'s
+  `BM25Okapi` uses the classic Robertson–Spärck Jones idf, `ln(N − n + 0.5) − ln(n + 0.5)`,
+  which is negative for any term present in more than half of the documents; it then replaces
+  those values with `epsilon × average idf of the whole vocabulary` (read in the library source,
+  version 0.2.2, the latest release, from 2022, which also requires numpy). That is a reasonable
+  convention for large corpora, but in a small per-contract index it makes some term weights
+  depend on the contract's entire vocabulary, which is harder to reason about and to test.
+- **How it was found:** Reading the `BM25Okapi._calc_idf` source, then measuring on the 306
+  train contracts (no dev or test data) with our query templates and 150/50 chunking.
+- **Impact if missed:** Measured: in all 306 train contracts at least one query term would get
+  a negative classic idf (median 10 of 70 query terms per contract). Honest nuance: the affected
+  terms are overwhelmingly function words (`the` 305 contracts, `of` 304, `to` 303, `shall` 258,
+  `not` 173); content terms are rarely affected (`terms` 12, `written` 5, `term` 5, most others
+  1–2). So the practical ranking difference is probably small; the cost would have been
+  opacity, not broken retrieval.
+- **Fix / decision:** A ~60-line BM25 using Lucene's idf, `ln(1 + (N − n + 0.5) / (n + 0.5))`,
+  which is always positive and depends only on N and n; Lucene's defaults `k1 = 1.2`,
+  `b = 0.75`; distinct query terms counted once; chunks with zero score never returned. Scores
+  are tested against values written out from the formula by hand. No numpy dependency.
+- **Evidence:** `src/retrieval_labs/retrieval/bm25.py`; `tests/unit/test_bm25.py`
+  (`test_scores_match_hand_computed_values`, `test_idf_stays_positive_for_terms_in_every_chunk`);
+  measurement script output recorded above.
+- **Interview version:** "BM25 is simple enough to own, and our setting is unusual: each index is
+  a single contract of about fifty chunks. The popular library uses an idf that goes negative for
+  terms in more than half the documents and patches it with a vocabulary-wide average. I measured
+  that this mostly touches stopwords, so the gain isn't accuracy; it's that every score in my
+  system is a formula I can write on a whiteboard and test by hand."

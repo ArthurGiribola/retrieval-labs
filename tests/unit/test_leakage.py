@@ -106,16 +106,26 @@ def test_inference_modules_do_not_import_the_dataset_package() -> None:
     assert violations == []
 
 
-def test_vendor_sdk_is_isolated_in_one_module() -> None:
-    importers = [
+def importers_of(package: str) -> list[str]:
+    return sorted(
         module_name(path)
         for path in PACKAGE_DIR.rglob("*.py")
         if any(
-            n == "anthropic" or n.startswith("anthropic.")
+            n == package or n.startswith(package + ".")
             for n in imported_modules(path.read_text(encoding="utf-8"), module_name(path))
         )
-    ]
-    assert importers == ["retrieval_labs.extraction.anthropic_extractor"]
+    )
+
+
+def test_vendor_sdk_is_isolated_in_one_module() -> None:
+    assert importers_of("anthropic") == ["retrieval_labs.extraction.anthropic_extractor"]
+
+
+def test_model_libraries_are_isolated_in_adapter_modules() -> None:
+    allowed = {"retrieval_labs.retrieval.embeddings", "retrieval_labs.retrieval.reranker"}
+    assert set(importers_of("sentence_transformers")) <= allowed
+    assert importers_of("torch") == []
+    assert importers_of("transformers") == []
 
 
 def test_contract_has_no_annotation_fields() -> None:

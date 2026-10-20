@@ -78,6 +78,46 @@ def test_documents_module_does_not_depend_on_cuad() -> None:
     assert not any(name.startswith("retrieval_labs.cuad") for name in imports)
 
 
+# Inference code works on any Contract; it must not depend on the dataset package at all.
+INFERENCE_MODULES = (
+    "retrieval_labs.clauses",
+    "retrieval_labs.documents",
+    "retrieval_labs.ingestion",
+    "retrieval_labs.retrieval",
+    "retrieval_labs.extraction",
+    "retrieval_labs.pipeline",
+)
+
+
+def is_inference_module(module: str) -> bool:
+    return any(module == p or module.startswith(p + ".") for p in INFERENCE_MODULES)
+
+
+def test_inference_modules_do_not_import_the_dataset_package() -> None:
+    checked, violations = [], []
+    for path in PACKAGE_DIR.rglob("*.py"):
+        module = module_name(path)
+        if not is_inference_module(module):
+            continue
+        checked.append(module)
+        imports = imported_modules(path.read_text(encoding="utf-8"), module)
+        violations += [(module, n) for n in imports if n.startswith("retrieval_labs.cuad")]
+    assert "retrieval_labs.pipeline" in checked
+    assert violations == []
+
+
+def test_vendor_sdk_is_isolated_in_one_module() -> None:
+    importers = [
+        module_name(path)
+        for path in PACKAGE_DIR.rglob("*.py")
+        if any(
+            n == "anthropic" or n.startswith("anthropic.")
+            for n in imported_modules(path.read_text(encoding="utf-8"), module_name(path))
+        )
+    ]
+    assert importers == ["retrieval_labs.extraction.anthropic_extractor"]
+
+
 def test_contract_has_no_annotation_fields() -> None:
     assert set(Contract.model_fields) == CONTRACT_FIELDS
 

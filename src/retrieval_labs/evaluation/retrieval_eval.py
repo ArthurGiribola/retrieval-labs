@@ -216,6 +216,23 @@ def _classification(result: Confusion) -> dict[str, Any]:
     }
 
 
+def per_contract_values(records: Sequence[ItemRecord]) -> dict[str, dict[str, list[float]]]:
+    """Per-item metric values of answerable items, grouped by contract (for the bootstrap)."""
+    metrics: dict[str, dict[str, list[float]]] = {
+        "recall@1": defaultdict(list),
+        "recall@5": defaultdict(list),
+        f"mrr@{MRR_CUTOFF}": defaultdict(list),
+    }
+    for r in records:
+        if not r.answerable:
+            continue
+        first = r.first_rank[PRIMARY]
+        metrics["recall@1"][r.contract_id].append(float(hit_at_k(first, 1)))
+        metrics["recall@5"][r.contract_id].append(float(hit_at_k(first, 5)))
+        metrics[f"mrr@{MRR_CUTOFF}"][r.contract_id].append(reciprocal_rank(first, MRR_CUTOFF))
+    return {name: dict(values) for name, values in metrics.items()}
+
+
 def latency_stats(samples: Sequence[float]) -> dict[str, float]:
     ordered = sorted(samples)
     p95 = ordered[max(0, math.ceil(0.95 * len(ordered)) - 1)]

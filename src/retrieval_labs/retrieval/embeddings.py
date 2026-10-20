@@ -86,10 +86,12 @@ class CachedEmbedder:
     reused across runs and any change in chunk text produces a different key.
     """
 
-    def __init__(self, inner: Embedder, cache_dir: Path) -> None:
+    def __init__(self, inner: Embedder, cache_dir: Path, memoize_queries: bool = True) -> None:
         self.inner = inner
         self.name = inner.name
         self._dir = cache_dir / hashlib.sha256(inner.name.encode("utf-8")).hexdigest()[:16]
+        # Benchmarks disable this so measured query latency includes encoding the query.
+        self._memoize_queries = memoize_queries
         self._queries: dict[str, np.ndarray] = {}
         self.hits = 0
         self.misses = 0
@@ -118,6 +120,8 @@ class CachedEmbedder:
         return vectors
 
     def embed_query(self, text: str) -> np.ndarray:
+        if not self._memoize_queries:
+            return self.inner.embed_query(text)
         if text not in self._queries:
             self._queries[text] = self.inner.embed_query(text)
         return self._queries[text]

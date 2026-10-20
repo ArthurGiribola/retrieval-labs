@@ -1,0 +1,91 @@
+{
+  "models": {
+    "embedder_load_s": 13.371,
+    "embedder_max_seq_length": 512,
+    "reranker_load_s": 0.726
+  },
+  "runs": {
+    "bm25": {
+      "index_build": {
+        "count": 102,
+        "mean_ms": 5.975,
+        "median_ms": 3.148,
+        "p95_ms": 20.071
+      },
+      "query": {
+        "count": 510,
+        "mean_ms": 0.365,
+        "median_ms": 0.221,
+        "p95_ms": 1.189
+      }
+    },
+    "bm25-expanded \u2020": {
+      "index_build": {
+        "count": 102,
+        "mean_ms": 6.608,
+        "median_ms": 3.311,
+        "p95_ms": 26.119
+      },
+      "query": {
+        "count": 510,
+        "mean_ms": 0.43,
+        "median_ms": 0.256,
+        "p95_ms": 1.423
+      }
+    },
+    "dense": {
+      "embedding_cache": {
+        "hits": 0,
+        "misses": 102
+      },
+      "index_build": {
+        "count": 102,
+        "mean_ms": 2897.207,
+        "median_ms": 1489.314,
+        "p95_ms": 11085.682
+      },
+      "query": {
+        "count": 510,
+        "mean_ms": 16.317,
+        "median_ms": 15.674,
+        "p95_ms": 21.249
+      }
+    },
+    "hybrid": {
+      "embedding_cache": {
+        "hits": 102,
+        "misses": 0
+      },
+      "index_build": {
+        "count": 102,
+        "mean_ms": 18.345,
+        "median_ms": 12.562,
+        "p95_ms": 47.254
+      },
+      "query": {
+        "count": 510,
+        "mean_ms": 16.801,
+        "median_ms": 15.947,
+        "p95_ms": 20.327
+      }
+    },
+    "hybrid+rerank": {
+      "embedding_cache": {
+        "hits": 102,
+        "misses": 0
+      },
+      "index_build": {
+        "count": 102,
+        "mean_ms": 10.576,
+        "median_ms": 5.593,
+        "p95_ms": 43.829
+      },
+      "query": {
+        "count": 510,
+        "mean_ms": 415.634,
+        "median_ms": 407.745,
+        "p95_ms": 720.185
+      }
+    }
+  }
+}

@@ -1,0 +1,1444 @@
+{
+  "bootstrap": {
+    "confidence": 0.95,
+    "resamples": 1000,
+    "seed": 42
+  },
+  "criterion": "min_normalized_0.5",
+  "dataset": {
+    "archive_sha256": "f8161d18bea4e9c05e78fa6dda61c19c846fb8087ea969c172753bc2f45b999a",
+    "files": {
+      "contracts.jsonl": "29fc82ce9fd240e2e5049060120491f3f41aed840854ef179eb171caffaaef69",
+      "gold_annotations.jsonl": "1c108633d9cc84cfda90cd72727ba65b67c547dfe6bbb7e6d72fddc996b7c247",
+      "stats.json": "48cc95dd9bf84e4d2c1d113c6200df83802b514de8718cdb5e287c28195ccf7b"
+    }
+  },
+  "depth": 20,
+  "fit_split": "train",
+  "labels": [
+    "Governing Law",
+    "Termination For Convenience",
+    "Cap On Liability",
+    "Renewal Term",
+    "Notice Period To Terminate Renewal"
+  ],
+  "queries_sha256": "79968a06564ebb58d683e40f4f0d275d069f6d3d2271d64fc1f37915fcf0678c",
+  "run_name": "phase4-test",
+  "runs": {
+    "bm25": {
+      "chunking": {
+        "overlap_words": 50,
+        "window_words": 150
+      },
+      "confidence_intervals": {
+        "mrr@10": {
+          "estimate": 0.880511,
+          "high": 0.922547,
+          "low": 0.827798
+        },
+        "recall@1": {
+          "estimate": 0.833333,
+          "high": 0.89071,
+          "low": 0.766497
+        },
+        "recall@5": {
+          "estimate": 0.944444,
+          "high": 0.975369,
+          "low": 0.905941
+        }
+      },
+      "method": "bm25",
+      "presence": {
+        "macro_auroc": 0.865943,
+        "per_label": {
+          "Cap On Liability": {
+            "absent": 58,
+            "auroc": 0.85815,
+            "confusion": {
+              "fn": 9,
+              "fp": 17,
+              "tn": 41,
+              "tp": 35
+            },
+            "f1": 0.729167,
+            "precision": 0.673077,
+            "present": 44,
+            "recall": 0.795455,
+            "threshold_fit_on_train": 10.655245
+          },
+          "Governing Law": {
+            "absent": 19,
+            "auroc": 0.977806,
+            "confusion": {
+              "fn": 1,
+              "fp": 6,
+              "tn": 13,
+              "tp": 82
+            },
+            "f1": 0.959064,
+            "precision": 0.931818,
+            "present": 83,
+            "recall": 0.987952,
+            "threshold_fit_on_train": 6.654342
+          },
+          "Notice Period To Terminate Renewal": {
+            "absent": 86,
+            "auroc": 0.811047,
+            "confusion": {
+              "fn": 5,
+              "fp": 12,
+              "tn": 74,
+              "tp": 11
+            },
+            "f1": 0.564103,
+            "precision": 0.478261,
+            "present": 16,
+            "recall": 0.6875,
+            "threshold_fit_on_train": 16.22696
+          },
+          "Renewal Term": {
+            "absent": 76,
+            "auroc": 0.888664,
+            "confusion": {
+              "fn": 3,
+              "fp": 18,
+              "tn": 58,
+              "tp": 23
+            },
+            "f1": 0.686567,
+            "precision": 0.560976,
+            "present": 26,
+            "recall": 0.884615,
+            "threshold_fit_on_train": 9.703104
+          },
+          "Termination For Convenience": {
+            "absent": 73,
+            "auroc": 0.794048,
+            "confusion": {
+              "fn": 3,
+              "fp": 37,
+              "tn": 36,
+              "tp": 26
+            },
+            "f1": 0.565217,
+            "precision": 0.412698,
+            "present": 29,
+            "recall": 0.896552,
+            "threshold_fit_on_train": 13.449243
+          }
+        },
+        "pooled": {
+          "confusion": {
+            "fn": 21,
+            "fp": 90,
+            "tn": 222,
+            "tp": 177
+          },
+          "f1": 0.76129,
+          "precision": 0.662921,
+          "recall": 0.893939
+        }
+      },
+      "queries_sha256": "79968a06564ebb58d683e40f4f0d275d069f6d3d2271d64fc1f37915fcf0678c",
+      "ranking": {
+        "macro": {
+          "achievable": 1.0,
+          "mrr@10": 0.870446,
+          "recall@1": 0.820902,
+          "recall@10": 0.975999,
+          "recall@3": 0.904796,
+          "recall@5": 0.93308,
+          "recall@750words": 0.93308,
+          "span_coverage@5": 0.889952
+        },
+        "micro": {
+          "achievable": 1.0,
+          "answerable_items": 198,
+          "mrr@10": 0.880511,
+          "recall@1": 0.833333,
+          "recall@10": 0.979798,
+          "recall@3": 0.914141,
+          "recall@5": 0.944444,
+          "recall@750words": 0.944444,
+          "results_in_word_budget": 5,
+          "sensitivity": {
+            "any_overlap": {
+              "mrr@10": 0.895242,
+              "recall@5": 0.944444
+            },
+            "containment": {
+              "mrr@10": 0.823056,
+              "recall@5": 0.893939
+            }
+          },
+          "span_coverage@5": 0.895398
+        },
+        "per_label": {
+          "Cap On Liability": {
+            "achievable": 1.0,
+            "answerable_items": 44,
+            "mrr@10": 0.705988,
+            "recall@1": 0.613636,
+            "recall@10": 0.954545,
+            "recall@3": 0.75,
+            "recall@5": 0.840909,
+            "recall@750words": 0.840909,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 0.728716,
+                "recall@5": 0.840909
+              },
+              "containment": {
+                "mrr@10": 0.634181,
+                "recall@5": 0.75
+              }
+            },
+            "span_coverage@5": 0.642929
+          },
+          "Governing Law": {
+            "achievable": 1.0,
+            "answerable_items": 83,
+            "mrr@10": 0.952811,
+            "recall@1": 0.927711,
+            "recall@10": 0.987952,
+            "recall@3": 0.975904,
+            "recall@5": 0.987952,
+            "recall@750words": 0.987952,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 0.952811,
+                "recall@5": 0.987952
+              },
+              "containment": {
+                "mrr@10": 0.916667,
+                "recall@5": 0.963855
+              }
+            },
+            "span_coverage@5": 0.978916
+          },
+          "Notice Period To Terminate Renewal": {
+            "achievable": 1.0,
+            "answerable_items": 16,
+            "mrr@10": 0.854167,
+            "recall@1": 0.8125,
+            "recall@10": 0.9375,
+            "recall@3": 0.875,
+            "recall@5": 0.875,
+            "recall@750words": 0.875,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 0.854167,
+                "recall@5": 0.875
+              },
+              "containment": {
+                "mrr@10": 0.679167,
+                "recall@5": 0.75
+              }
+            },
+            "span_coverage@5": 0.875
+          },
+          "Renewal Term": {
+            "achievable": 1.0,
+            "answerable_items": 26,
+            "mrr@10": 0.936966,
+            "recall@1": 0.923077,
+            "recall@10": 1.0,
+            "recall@3": 0.923077,
+            "recall@5": 0.961538,
+            "recall@750words": 0.961538,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 0.965812,
+                "recall@5": 0.961538
+              },
+              "containment": {
+                "mrr@10": 0.850427,
+                "recall@5": 0.884615
+              }
+            },
+            "span_coverage@5": 0.961538
+          },
+          "Termination For Convenience": {
+            "achievable": 1.0,
+            "answerable_items": 29,
+            "mrr@10": 0.902299,
+            "recall@1": 0.827586,
+            "recall@10": 1.0,
+            "recall@3": 1.0,
+            "recall@5": 1.0,
+            "recall@750words": 1.0,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 0.942529,
+                "recall@5": 1.0
+              },
+              "containment": {
+                "mrr@10": 0.896552,
+                "recall@5": 1.0
+              }
+            },
+            "span_coverage@5": 0.991379
+          }
+        }
+      },
+      "retriever": {
+        "name": "bm25",
+        "params": {
+          "b": 0.75,
+          "k1": 1.2
+        }
+      },
+      "tuned_on_dev": false
+    },
+    "bm25-expanded \u2020": {
+      "chunking": {
+        "overlap_words": 50,
+        "window_words": 150
+      },
+      "confidence_intervals": {
+        "mrr@10": {
+          "estimate": 0.918869,
+          "high": 0.952607,
+          "low": 0.877375,
+          "vs_baseline": {
+            "estimate": 0.038358,
+            "high": 0.060802,
+            "low": 0.020142
+          }
+        },
+        "recall@1": {
+          "estimate": 0.878788,
+          "high": 0.928571,
+          "low": 0.823529,
+          "vs_baseline": {
+            "estimate": 0.045455,
+            "high": 0.076531,
+            "low": 0.019512
+          }
+        },
+        "recall@5": {
+          "estimate": 0.974747,
+          "high": 0.994949,
+          "low": 0.944444,
+          "vs_baseline": {
+            "estimate": 0.030303,
+            "high": 0.058201,
+            "low": 0.009479
+          }
+        }
+      },
+      "method": "bm25-expanded",
+      "presence": {
+        "macro_auroc": 0.884906,
+        "per_label": {
+          "Cap On Liability": {
+            "absent": 58,
+            "auroc": 0.955329,
+            "confusion": {
+              "fn": 5,
+              "fp": 10,
+              "tn": 48,
+              "tp": 39
+            },
+            "f1": 0.83871,
+            "precision": 0.795918,
+            "present": 44,
+            "recall": 0.886364,
+            "threshold_fit_on_train": 18.186264
+          },
+          "Governing Law": {
+            "absent": 19,
+            "auroc": 0.977806,
+            "confusion": {
+              "fn": 1,
+              "fp": 6,
+              "tn": 13,
+              "tp": 82
+            },
+            "f1": 0.959064,
+            "precision": 0.931818,
+            "present": 83,
+            "recall": 0.987952,
+            "threshold_fit_on_train": 6.654342
+          },
+          "Notice Period To Terminate Renewal": {
+            "absent": 86,
+            "auroc": 0.811047,
+            "confusion": {
+              "fn": 5,
+              "fp": 12,
+              "tn": 74,
+              "tp": 11
+            },
+            "f1": 0.564103,
+            "precision": 0.478261,
+            "present": 16,
+            "recall": 0.6875,
+            "threshold_fit_on_train": 16.22696
+          },
+          "Renewal Term": {
+            "absent": 76,
+            "auroc": 0.888664,
+            "confusion": {
+              "fn": 3,
+              "fp": 18,
+              "tn": 58,
+              "tp": 23
+            },
+            "f1": 0.686567,
+            "precision": 0.560976,
+            "present": 26,
+            "recall": 0.884615,
+            "threshold_fit_on_train": 9.703104
+          },
+          "Termination For Convenience": {
+            "absent": 73,
+            "auroc": 0.791686,
+            "confusion": {
+              "fn": 0,
+              "fp": 49,
+              "tn": 24,
+              "tp": 29
+            },
+            "f1": 0.542056,
+            "precision": 0.371795,
+            "present": 29,
+            "recall": 1.0,
+            "threshold_fit_on_train": 11.744726
+          }
+        },
+        "pooled": {
+          "confusion": {
+            "fn": 14,
+            "fp": 95,
+            "tn": 217,
+            "tp": 184
+          },
+          "f1": 0.771488,
+          "precision": 0.659498,
+          "recall": 0.929293
+        }
+      },
+      "queries_sha256": "dcfaeebc00f9aa52c3f5fb0c2abba64d03cd9a8e2d4aefa714c098e3c4e0f3aa",
+      "ranking": {
+        "macro": {
+          "achievable": 1.0,
+          "mrr@10": 0.903009,
+          "recall@1": 0.85946,
+          "recall@10": 0.98509,
+          "recall@3": 0.945705,
+          "recall@5": 0.960353,
+          "recall@750words": 0.960353,
+          "span_coverage@5": 0.934851
+        },
+        "micro": {
+          "achievable": 1.0,
+          "answerable_items": 198,
+          "mrr@10": 0.918869,
+          "recall@1": 0.878788,
+          "recall@10": 0.989899,
+          "recall@3": 0.959596,
+          "recall@5": 0.974747,
+          "recall@750words": 0.974747,
+          "results_in_word_budget": 5,
+          "sensitivity": {
+            "any_overlap": {
+              "mrr@10": 0.931075,
+              "recall@5": 0.974747
+            },
+            "containment": {
+              "mrr@10": 0.84342,
+              "recall@5": 0.914141
+            }
+          },
+          "span_coverage@5": 0.945286
+        },
+        "per_label": {
+          "Cap On Liability": {
+            "achievable": 1.0,
+            "answerable_items": 44,
+            "mrr@10": 0.897538,
+            "recall@1": 0.840909,
+            "recall@10": 1.0,
+            "recall@3": 0.954545,
+            "recall@5": 0.977273,
+            "recall@750words": 0.977273,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 0.908902,
+                "recall@5": 0.977273
+              },
+              "containment": {
+                "mrr@10": 0.74476,
+                "recall@5": 0.840909
+              }
+            },
+            "span_coverage@5": 0.867424
+          },
+          "Governing Law": {
+            "achievable": 1.0,
+            "answerable_items": 83,
+            "mrr@10": 0.952811,
+            "recall@1": 0.927711,
+            "recall@10": 0.987952,
+            "recall@3": 0.975904,
+            "recall@5": 0.987952,
+            "recall@750words": 0.987952,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 0.952811,
+                "recall@5": 0.987952
+              },
+              "containment": {
+                "mrr@10": 0.916667,
+                "recall@5": 0.963855
+              }
+            },
+            "span_coverage@5": 0.978916
+          },
+          "Notice Period To Terminate Renewal": {
+            "achievable": 1.0,
+            "answerable_items": 16,
+            "mrr@10": 0.854167,
+            "recall@1": 0.8125,
+            "recall@10": 0.9375,
+            "recall@3": 0.875,
+            "recall@5": 0.875,
+            "recall@750words": 0.875,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 0.854167,
+                "recall@5": 0.875
+              },
+              "containment": {
+                "mrr@10": 0.679167,
+                "recall@5": 0.75
+              }
+            },
+            "span_coverage@5": 0.875
+          },
+          "Renewal Term": {
+            "achievable": 1.0,
+            "answerable_items": 26,
+            "mrr@10": 0.936966,
+            "recall@1": 0.923077,
+            "recall@10": 1.0,
+            "recall@3": 0.923077,
+            "recall@5": 0.961538,
+            "recall@750words": 0.961538,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 0.965812,
+                "recall@5": 0.961538
+              },
+              "containment": {
+                "mrr@10": 0.850427,
+                "recall@5": 0.884615
+              }
+            },
+            "span_coverage@5": 0.961538
+          },
+          "Termination For Convenience": {
+            "achievable": 1.0,
+            "answerable_items": 29,
+            "mrr@10": 0.873563,
+            "recall@1": 0.793103,
+            "recall@10": 1.0,
+            "recall@3": 1.0,
+            "recall@5": 1.0,
+            "recall@750words": 1.0,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 0.913793,
+                "recall@5": 1.0
+              },
+              "containment": {
+                "mrr@10": 0.867816,
+                "recall@5": 1.0
+              }
+            },
+            "span_coverage@5": 0.991379
+          }
+        }
+      },
+      "retriever": {
+        "name": "bm25",
+        "params": {
+          "b": 0.75,
+          "k1": 1.2
+        }
+      },
+      "tuned_on_dev": true
+    },
+    "dense": {
+      "chunking": {
+        "overlap_words": 50,
+        "window_words": 150
+      },
+      "confidence_intervals": {
+        "mrr@10": {
+          "estimate": 0.783578,
+          "high": 0.834395,
+          "low": 0.733738,
+          "vs_baseline": {
+            "estimate": -0.096934,
+            "high": -0.044054,
+            "low": -0.145681
+          }
+        },
+        "recall@1": {
+          "estimate": 0.70202,
+          "high": 0.767677,
+          "low": 0.637306,
+          "vs_baseline": {
+            "estimate": -0.131313,
+            "high": -0.058252,
+            "low": -0.2
+          }
+        },
+        "recall@5": {
+          "estimate": 0.89899,
+          "high": 0.940299,
+          "low": 0.848168,
+          "vs_baseline": {
+            "estimate": -0.045455,
+            "high": 0.0,
+            "low": -0.08867
+          }
+        }
+      },
+      "method": "dense",
+      "presence": {
+        "macro_auroc": 0.818318,
+        "per_label": {
+          "Cap On Liability": {
+            "absent": 58,
+            "auroc": 0.893809,
+            "confusion": {
+              "fn": 5,
+              "fp": 24,
+              "tn": 34,
+              "tp": 39
+            },
+            "f1": 0.728972,
+            "precision": 0.619048,
+            "present": 44,
+            "recall": 0.886364,
+            "threshold_fit_on_train": 0.665902
+          },
+          "Governing Law": {
+            "absent": 19,
+            "auroc": 0.92137,
+            "confusion": {
+              "fn": 2,
+              "fp": 8,
+              "tn": 11,
+              "tp": 81
+            },
+            "f1": 0.94186,
+            "precision": 0.910112,
+            "present": 83,
+            "recall": 0.975904,
+            "threshold_fit_on_train": 0.568509
+          },
+          "Notice Period To Terminate Renewal": {
+            "absent": 86,
+            "auroc": 0.702035,
+            "confusion": {
+              "fn": 9,
+              "fp": 13,
+              "tn": 73,
+              "tp": 7
+            },
+            "f1": 0.388889,
+            "precision": 0.35,
+            "present": 16,
+            "recall": 0.4375,
+            "threshold_fit_on_train": 0.688662
+          },
+          "Renewal Term": {
+            "absent": 76,
+            "auroc": 0.850709,
+            "confusion": {
+              "fn": 12,
+              "fp": 8,
+              "tn": 68,
+              "tp": 14
+            },
+            "f1": 0.583333,
+            "precision": 0.636364,
+            "present": 26,
+            "recall": 0.538462,
+            "threshold_fit_on_train": 0.628098
+          },
+          "Termination For Convenience": {
+            "absent": 73,
+            "auroc": 0.723666,
+            "confusion": {
+              "fn": 0,
+              "fp": 60,
+              "tn": 13,
+              "tp": 29
+            },
+            "f1": 0.491525,
+            "precision": 0.325843,
+            "present": 29,
+            "recall": 1.0,
+            "threshold_fit_on_train": 0.57839
+          }
+        },
+        "pooled": {
+          "confusion": {
+            "fn": 28,
+            "fp": 113,
+            "tn": 199,
+            "tp": 170
+          },
+          "f1": 0.706861,
+          "precision": 0.600707,
+          "recall": 0.858586
+        }
+      },
+      "queries_sha256": "79968a06564ebb58d683e40f4f0d275d069f6d3d2271d64fc1f37915fcf0678c",
+      "ranking": {
+        "macro": {
+          "achievable": 1.0,
+          "mrr@10": 0.760225,
+          "recall@1": 0.669359,
+          "recall@10": 0.959406,
+          "recall@3": 0.820654,
+          "recall@5": 0.876099,
+          "recall@750words": 0.876099,
+          "span_coverage@5": 0.83324
+        },
+        "micro": {
+          "achievable": 1.0,
+          "answerable_items": 198,
+          "mrr@10": 0.783578,
+          "recall@1": 0.70202,
+          "recall@10": 0.949495,
+          "recall@3": 0.843434,
+          "recall@5": 0.89899,
+          "recall@750words": 0.89899,
+          "results_in_word_budget": 5,
+          "sensitivity": {
+            "any_overlap": {
+              "mrr@10": 0.800573,
+              "recall@5": 0.909091
+            },
+            "containment": {
+              "mrr@10": 0.689091,
+              "recall@5": 0.828283
+            }
+          },
+          "span_coverage@5": 0.849888
+        },
+        "per_label": {
+          "Cap On Liability": {
+            "achievable": 1.0,
+            "answerable_items": 44,
+            "mrr@10": 0.768398,
+            "recall@1": 0.681818,
+            "recall@10": 0.931818,
+            "recall@3": 0.840909,
+            "recall@5": 0.886364,
+            "recall@750words": 0.886364,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 0.79816,
+                "recall@5": 0.886364
+              },
+              "containment": {
+                "mrr@10": 0.647186,
+                "recall@5": 0.772727
+              }
+            },
+            "span_coverage@5": 0.739268
+          },
+          "Governing Law": {
+            "achievable": 1.0,
+            "answerable_items": 83,
+            "mrr@10": 0.773226,
+            "recall@1": 0.698795,
+            "recall@10": 0.927711,
+            "recall@3": 0.831325,
+            "recall@5": 0.903614,
+            "recall@750words": 0.903614,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 0.78996,
+                "recall@5": 0.915663
+              },
+              "containment": {
+                "mrr@10": 0.699933,
+                "recall@5": 0.855422
+              }
+            },
+            "span_coverage@5": 0.879518
+          },
+          "Notice Period To Terminate Renewal": {
+            "achievable": 1.0,
+            "answerable_items": 16,
+            "mrr@10": 0.421528,
+            "recall@1": 0.25,
+            "recall@10": 0.9375,
+            "recall@3": 0.5,
+            "recall@5": 0.625,
+            "recall@750words": 0.625,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 0.452778,
+                "recall@5": 0.625
+              },
+              "containment": {
+                "mrr@10": 0.348611,
+                "recall@5": 0.5625
+              }
+            },
+            "span_coverage@5": 0.625
+          },
+          "Renewal Term": {
+            "achievable": 1.0,
+            "answerable_items": 26,
+            "mrr@10": 0.961538,
+            "recall@1": 0.923077,
+            "recall@10": 1.0,
+            "recall@3": 1.0,
+            "recall@5": 1.0,
+            "recall@750words": 1.0,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 0.961538,
+                "recall@5": 1.0
+              },
+              "containment": {
+                "mrr@10": 0.783654,
+                "recall@5": 0.884615
+              }
+            },
+            "span_coverage@5": 1.0
+          },
+          "Termination For Convenience": {
+            "achievable": 1.0,
+            "answerable_items": 29,
+            "mrr@10": 0.876437,
+            "recall@1": 0.793103,
+            "recall@10": 1.0,
+            "recall@3": 0.931034,
+            "recall@5": 0.965517,
+            "recall@750words": 0.965517,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 0.882184,
+                "recall@5": 1.0
+              },
+              "containment": {
+                "mrr@10": 0.824713,
+                "recall@5": 0.931034
+              }
+            },
+            "span_coverage@5": 0.922414
+          }
+        }
+      },
+      "retriever": {
+        "name": "dense",
+        "params": {
+          "model": "BAAI/bge-small-en-v1.5@5c38ec7c"
+        }
+      },
+      "tuned_on_dev": false
+    },
+    "hybrid": {
+      "chunking": {
+        "overlap_words": 50,
+        "window_words": 150
+      },
+      "confidence_intervals": {
+        "mrr@10": {
+          "estimate": 0.868589,
+          "high": 0.911655,
+          "low": 0.818822,
+          "vs_baseline": {
+            "estimate": -0.011923,
+            "high": 0.021748,
+            "low": -0.041687
+          }
+        },
+        "recall@1": {
+          "estimate": 0.813131,
+          "high": 0.870647,
+          "low": 0.75,
+          "vs_baseline": {
+            "estimate": -0.020202,
+            "high": 0.028571,
+            "low": -0.062827
+          }
+        },
+        "recall@5": {
+          "estimate": 0.954545,
+          "high": 0.978723,
+          "low": 0.923077,
+          "vs_baseline": {
+            "estimate": 0.010101,
+            "high": 0.031414,
+            "low": -0.005682
+          }
+        }
+      },
+      "method": "hybrid",
+      "presence": {
+        "macro_auroc": 0.612214,
+        "per_label": {
+          "Cap On Liability": {
+            "absent": 58,
+            "auroc": 0.542712,
+            "confusion": {
+              "fn": 0,
+              "fp": 55,
+              "tn": 3,
+              "tp": 44
+            },
+            "f1": 0.615385,
+            "precision": 0.444444,
+            "present": 44,
+            "recall": 1.0,
+            "threshold_fit_on_train": 0.030886
+          },
+          "Governing Law": {
+            "absent": 19,
+            "auroc": 0.693722,
+            "confusion": {
+              "fn": 0,
+              "fp": 19,
+              "tn": 0,
+              "tp": 83
+            },
+            "f1": 0.897297,
+            "precision": 0.813725,
+            "present": 83,
+            "recall": 1.0,
+            "threshold_fit_on_train": 0.030415
+          },
+          "Notice Period To Terminate Renewal": {
+            "absent": 86,
+            "auroc": 0.416424,
+            "confusion": {
+              "fn": 13,
+              "fp": 39,
+              "tn": 47,
+              "tp": 3
+            },
+            "f1": 0.103448,
+            "precision": 0.071429,
+            "present": 16,
+            "recall": 0.1875,
+            "threshold_fit_on_train": 0.032787
+          },
+          "Renewal Term": {
+            "absent": 76,
+            "auroc": 0.731781,
+            "confusion": {
+              "fn": 2,
+              "fp": 37,
+              "tn": 39,
+              "tp": 24
+            },
+            "f1": 0.551724,
+            "precision": 0.393443,
+            "present": 26,
+            "recall": 0.923077,
+            "threshold_fit_on_train": 0.032522
+          },
+          "Termination For Convenience": {
+            "absent": 73,
+            "auroc": 0.676429,
+            "confusion": {
+              "fn": 0,
+              "fp": 70,
+              "tn": 3,
+              "tp": 29
+            },
+            "f1": 0.453125,
+            "precision": 0.292929,
+            "present": 29,
+            "recall": 1.0,
+            "threshold_fit_on_train": 0.031025
+          }
+        },
+        "pooled": {
+          "confusion": {
+            "fn": 15,
+            "fp": 220,
+            "tn": 92,
+            "tp": 183
+          },
+          "f1": 0.608985,
+          "precision": 0.454094,
+          "recall": 0.924242
+        }
+      },
+      "queries_sha256": "79968a06564ebb58d683e40f4f0d275d069f6d3d2271d64fc1f37915fcf0678c",
+      "ranking": {
+        "macro": {
+          "achievable": 1.0,
+          "mrr@10": 0.846914,
+          "recall@1": 0.779124,
+          "recall@10": 0.98609,
+          "recall@3": 0.903724,
+          "recall@5": 0.955408,
+          "recall@750words": 0.955408,
+          "span_coverage@5": 0.916235
+        },
+        "micro": {
+          "achievable": 1.0,
+          "answerable_items": 198,
+          "mrr@10": 0.868589,
+          "recall@1": 0.813131,
+          "recall@10": 0.979798,
+          "recall@3": 0.914141,
+          "recall@5": 0.954545,
+          "recall@750words": 0.954545,
+          "results_in_word_budget": 5,
+          "sensitivity": {
+            "any_overlap": {
+              "mrr@10": 0.882941,
+              "recall@5": 0.954545
+            },
+            "containment": {
+              "mrr@10": 0.798645,
+              "recall@5": 0.888889
+            }
+          },
+          "span_coverage@5": 0.910073
+        },
+        "per_label": {
+          "Cap On Liability": {
+            "achievable": 1.0,
+            "answerable_items": 44,
+            "mrr@10": 0.779987,
+            "recall@1": 0.704545,
+            "recall@10": 0.954545,
+            "recall@3": 0.840909,
+            "recall@5": 0.863636,
+            "recall@750words": 0.863636,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 0.807449,
+                "recall@5": 0.863636
+              },
+              "containment": {
+                "mrr@10": 0.68529,
+                "recall@5": 0.75
+              }
+            },
+            "span_coverage@5": 0.720328
+          },
+          "Governing Law": {
+            "achievable": 1.0,
+            "answerable_items": 83,
+            "mrr@10": 0.905823,
+            "recall@1": 0.86747,
+            "recall@10": 0.975904,
+            "recall@3": 0.927711,
+            "recall@5": 0.975904,
+            "recall@750words": 0.975904,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 0.915462,
+                "recall@5": 0.975904
+              },
+              "containment": {
+                "mrr@10": 0.841279,
+                "recall@5": 0.939759
+              }
+            },
+            "span_coverage@5": 0.957831
+          },
+          "Notice Period To Terminate Renewal": {
+            "achievable": 1.0,
+            "answerable_items": 16,
+            "mrr@10": 0.654861,
+            "recall@1": 0.5,
+            "recall@10": 1.0,
+            "recall@3": 0.75,
+            "recall@5": 0.9375,
+            "recall@750words": 0.9375,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 0.654861,
+                "recall@5": 0.9375
+              },
+              "containment": {
+                "mrr@10": 0.572049,
+                "recall@5": 0.75
+              }
+            },
+            "span_coverage@5": 0.9375
+          },
+          "Renewal Term": {
+            "achievable": 1.0,
+            "answerable_items": 26,
+            "mrr@10": 0.974359,
+            "recall@1": 0.961538,
+            "recall@10": 1.0,
+            "recall@3": 1.0,
+            "recall@5": 1.0,
+            "recall@750words": 1.0,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 1.0,
+                "recall@5": 1.0
+              },
+              "containment": {
+                "mrr@10": 0.865385,
+                "recall@5": 0.923077
+              }
+            },
+            "span_coverage@5": 1.0
+          },
+          "Termination For Convenience": {
+            "achievable": 1.0,
+            "answerable_items": 29,
+            "mrr@10": 0.91954,
+            "recall@1": 0.862069,
+            "recall@10": 1.0,
+            "recall@3": 1.0,
+            "recall@5": 1.0,
+            "recall@750words": 1.0,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 0.925287,
+                "recall@5": 1.0
+              },
+              "containment": {
+                "mrr@10": 0.913793,
+                "recall@5": 1.0
+              }
+            },
+            "span_coverage@5": 0.965517
+          }
+        }
+      },
+      "retriever": {
+        "name": "hybrid",
+        "params": {
+          "components": [
+            "bm25",
+            "dense"
+          ],
+          "rrf_k": 60
+        }
+      },
+      "tuned_on_dev": false
+    },
+    "hybrid+rerank": {
+      "chunking": {
+        "overlap_words": 50,
+        "window_words": 150
+      },
+      "confidence_intervals": {
+        "mrr@10": {
+          "estimate": 0.917977,
+          "high": 0.946545,
+          "low": 0.882844,
+          "vs_baseline": {
+            "estimate": 0.037466,
+            "high": 0.069942,
+            "low": 0.005231
+          }
+        },
+        "recall@1": {
+          "estimate": 0.868687,
+          "high": 0.913706,
+          "low": 0.815385,
+          "vs_baseline": {
+            "estimate": 0.035354,
+            "high": 0.083744,
+            "low": -0.015228
+          }
+        },
+        "recall@5": {
+          "estimate": 0.979798,
+          "high": 0.995074,
+          "low": 0.959184,
+          "vs_baseline": {
+            "estimate": 0.035354,
+            "high": 0.067358,
+            "low": 0.01005
+          }
+        }
+      },
+      "method": "hybrid+rerank",
+      "presence": {
+        "macro_auroc": 0.91891,
+        "per_label": {
+          "Cap On Liability": {
+            "absent": 58,
+            "auroc": 0.93652,
+            "confusion": {
+              "fn": 5,
+              "fp": 9,
+              "tn": 49,
+              "tp": 39
+            },
+            "f1": 0.847826,
+            "precision": 0.8125,
+            "present": 44,
+            "recall": 0.886364,
+            "threshold_fit_on_train": -6.54401
+          },
+          "Governing Law": {
+            "absent": 19,
+            "auroc": 0.995561,
+            "confusion": {
+              "fn": 2,
+              "fp": 2,
+              "tn": 17,
+              "tp": 81
+            },
+            "f1": 0.975904,
+            "precision": 0.975904,
+            "present": 83,
+            "recall": 0.975904,
+            "threshold_fit_on_train": -8.115068
+          },
+          "Notice Period To Terminate Renewal": {
+            "absent": 86,
+            "auroc": 0.845203,
+            "confusion": {
+              "fn": 7,
+              "fp": 11,
+              "tn": 75,
+              "tp": 9
+            },
+            "f1": 0.5,
+            "precision": 0.45,
+            "present": 16,
+            "recall": 0.5625,
+            "threshold_fit_on_train": 0.684672
+          },
+          "Renewal Term": {
+            "absent": 76,
+            "auroc": 0.965587,
+            "confusion": {
+              "fn": 4,
+              "fp": 6,
+              "tn": 70,
+              "tp": 22
+            },
+            "f1": 0.814815,
+            "precision": 0.785714,
+            "present": 26,
+            "recall": 0.846154,
+            "threshold_fit_on_train": -3.315176
+          },
+          "Termination For Convenience": {
+            "absent": 73,
+            "auroc": 0.851677,
+            "confusion": {
+              "fn": 2,
+              "fp": 32,
+              "tn": 41,
+              "tp": 27
+            },
+            "f1": 0.613636,
+            "precision": 0.457627,
+            "present": 29,
+            "recall": 0.931034,
+            "threshold_fit_on_train": -0.529424
+          }
+        },
+        "pooled": {
+          "confusion": {
+            "fn": 20,
+            "fp": 60,
+            "tn": 252,
+            "tp": 178
+          },
+          "f1": 0.816514,
+          "precision": 0.747899,
+          "recall": 0.89899
+        }
+      },
+      "queries_sha256": "79968a06564ebb58d683e40f4f0d275d069f6d3d2271d64fc1f37915fcf0678c",
+      "ranking": {
+        "macro": {
+          "achievable": 1.0,
+          "mrr@10": 0.899255,
+          "recall@1": 0.834131,
+          "recall@10": 1.0,
+          "recall@3": 0.964557,
+          "recall@5": 0.973864,
+          "recall@750words": 0.973864,
+          "span_coverage@5": 0.915795
+        },
+        "micro": {
+          "achievable": 1.0,
+          "answerable_items": 198,
+          "mrr@10": 0.917977,
+          "recall@1": 0.868687,
+          "recall@10": 1.0,
+          "recall@3": 0.969697,
+          "recall@5": 0.979798,
+          "recall@750words": 0.979798,
+          "results_in_word_budget": 5,
+          "sensitivity": {
+            "any_overlap": {
+              "mrr@10": 0.927068,
+              "recall@5": 0.979798
+            },
+            "containment": {
+              "mrr@10": 0.823912,
+              "recall@5": 0.919192
+            }
+          },
+          "span_coverage@5": 0.922391
+        },
+        "per_label": {
+          "Cap On Liability": {
+            "achievable": 1.0,
+            "answerable_items": 44,
+            "mrr@10": 0.847944,
+            "recall@1": 0.772727,
+            "recall@10": 1.0,
+            "recall@3": 0.931818,
+            "recall@5": 0.931818,
+            "recall@750words": 0.931818,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 0.859307,
+                "recall@5": 0.931818
+              },
+              "containment": {
+                "mrr@10": 0.710633,
+                "recall@5": 0.795455
+              }
+            },
+            "span_coverage@5": 0.7625
+          },
+          "Governing Law": {
+            "achievable": 1.0,
+            "answerable_items": 83,
+            "mrr@10": 0.966867,
+            "recall@1": 0.951807,
+            "recall@10": 1.0,
+            "recall@3": 0.987952,
+            "recall@5": 1.0,
+            "recall@750words": 1.0,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 0.966867,
+                "recall@5": 1.0
+              },
+              "containment": {
+                "mrr@10": 0.906627,
+                "recall@5": 0.975904
+              }
+            },
+            "span_coverage@5": 0.98494
+          },
+          "Notice Period To Terminate Renewal": {
+            "achievable": 1.0,
+            "answerable_items": 16,
+            "mrr@10": 0.8125,
+            "recall@1": 0.6875,
+            "recall@10": 1.0,
+            "recall@3": 0.9375,
+            "recall@5": 0.9375,
+            "recall@750words": 0.9375,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 0.84375,
+                "recall@5": 0.9375
+              },
+              "containment": {
+                "mrr@10": 0.6875,
+                "recall@5": 0.8125
+              }
+            },
+            "span_coverage@5": 0.90625
+          },
+          "Renewal Term": {
+            "achievable": 1.0,
+            "answerable_items": 26,
+            "mrr@10": 1.0,
+            "recall@1": 1.0,
+            "recall@10": 1.0,
+            "recall@3": 1.0,
+            "recall@5": 1.0,
+            "recall@750words": 1.0,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 1.0,
+                "recall@5": 1.0
+              },
+              "containment": {
+                "mrr@10": 0.833333,
+                "recall@5": 0.923077
+              }
+            },
+            "span_coverage@5": 1.0
+          },
+          "Termination For Convenience": {
+            "achievable": 1.0,
+            "answerable_items": 29,
+            "mrr@10": 0.868966,
+            "recall@1": 0.758621,
+            "recall@10": 1.0,
+            "recall@3": 0.965517,
+            "recall@5": 1.0,
+            "recall@750words": 1.0,
+            "results_in_word_budget": 5,
+            "sensitivity": {
+              "any_overlap": {
+                "mrr@10": 0.896552,
+                "recall@5": 1.0
+              },
+              "containment": {
+                "mrr@10": 0.825862,
+                "recall@5": 1.0
+              }
+            },
+            "span_coverage@5": 0.925287
+          }
+        }
+      },
+      "retriever": {
+        "name": "hybrid+rerank",
+        "params": {
+          "base": "hybrid",
+          "candidates": 20,
+          "model": "cross-encoder/ms-marco-MiniLM-L6-v2@233902d2"
+        }
+      },
+      "tuned_on_dev": false
+    }
+  },
+  "split": "test",
+  "word_budget": 750
+}

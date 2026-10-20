@@ -307,3 +307,30 @@ Entry template:
   liability', while my query followed the dataset's written definition. It was a labeling-scope
   mismatch, not a ranking problem — the kind of thing you only find by reading failures, not
   by staring at the average."
+
+## LOG-010 — Queries kept frozen for Phase 4; query expansion reported only as a separate row
+
+- **Date / Phase:** 2026-10-20 / end of Phase 3 (owner decision)
+- **Category:** decision
+- **Context:** LOG-009 showed that BM25's `Cap On Liability` misses come from a vocabulary gap:
+  CUAD annotates damage exclusions and sole-remedy clauses as caps, while our query (and the
+  extraction prompt) follow CUAD's written description. Expanding the query with those terms
+  would very likely fix many BM25 misses on dev.
+- **The problem:** Phase 4's research question is whether dense and hybrid retrieval close
+  gaps that lexical matching cannot. Tuning the shared query on dev now would remove exactly
+  the gap that question is about, and it would be tuning on the split we report.
+- **How it was found:** Owner review of the Phase 3 failure analysis.
+- **Impact if missed:** The four-method comparison would understate the value of semantic
+  retrieval, and BM25's dev numbers would be optimistic because its query was fitted to the
+  dev failures.
+- **Fix / decision:** Queries and the extraction prompt stay frozen, aligned with CUAD's written
+  description, for the main comparison of all four methods. After that comparison, an optional
+  extra row "BM25 + expanded query" may be added, explicitly marked as tuned on dev and reported
+  separately from the fair comparison.
+- **Evidence:** `retrieval/queries.py` and `extraction/prompt.py` unchanged since Phase 2
+  (`PROMPT_VERSION` and `queries_sha256` recorded in every run); this entry.
+- **Interview version:** "I found that most BM25 misses were a vocabulary gap, and fixing the
+  query would have been easy. I deliberately didn't: the whole point of comparing dense and
+  hybrid retrieval was to see whether they close that gap on their own. The tuned query is
+  reported as a separate, clearly labeled row, so nobody confuses a fitted baseline with a fair
+  one."

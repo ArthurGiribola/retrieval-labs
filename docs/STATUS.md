@@ -63,17 +63,18 @@ Project LLM spend so far: US$ 0.00.
 5. Queries frozen during Phase 3; failure analysis informs Phase 4.
 6. Extraction path must stay runnable (CLAUDE.md); its tests passed unchanged after the refactor.
 
-## Decisions needed from the owner
+## Owner decisions (end of Phase 3)
 
-1. **Chunk configuration for Phase 4** (dev results above; 100/33 and 150/50 are within one or
-   two items of each other on R@1 and MRR).
-2. **Cap On Liability scope (LOG-009):** keep the query and extraction definition aligned to
-   CUAD's written description, or revise them on dev to CUAD's operational scope (damage
-   exclusions, sole-remedy clauses), documented and applied to all methods.
+1. **Chunking for Phase 4: 150/50.**
+2. **Queries and extraction prompt stay frozen**, aligned with CUAD's written description, so
+   Phase 4 measures whether dense/hybrid retrieval close the vocabulary gap BM25 cannot
+   (LOG-010). After the main comparison, an optional "BM25 + expanded query" row, marked as
+   tuned on dev and reported separately from the fair comparison.
 
 ## Pending tasks / next recommended action
 
-1. Owner decisions above, then Phase 4 planning (dense, hybrid, hybrid + reranking).
+1. Phase 4 plan (dense, hybrid, hybrid + reranking) — awaiting owner review, including model
+   names, sizes and licenses before any download.
 2. **Deferred: paid pilot** — `ANTHROPIC_API_KEY` in `.env`, then
    `uv run --env-file .env python scripts/run_pipeline.py --dev-first 3 --text-dir
    data/fixtures/adversarial --provider anthropic --max-usd 0.25`. After it: run the extraction

@@ -1,7 +1,8 @@
 # Dataset — CUAD v1
 
 This document records what was **verified by inspecting the actual files**, not what was assumed
-from documentation. Every number below comes from `scripts/inspect_cuad.py` (Phase 0).
+from documentation. Raw-file numbers come from `scripts/inspect_cuad.py` (Phase 0); numbers for
+the prepared dataset come from `scripts/prepare_cuad.py` (`stats.json`, `manifest.json`, Phase 1).
 
 ## Source and license
 
@@ -43,16 +44,15 @@ Other distributions (not used for the benchmark): the Hugging Face repository
 `theatticusproject/cuad` holds `CUAD_v1/CUAD_v1.json`, `master_clauses.csv/.xlsx`, the per-group
 Excel files, and the raw `full_contract_txt/` and `full_contract_pdf/` folders.
 
-### Download (manual, Phase 0)
+### Download and preparation
 
 ```bash
-mkdir -p data/raw/cuad
-curl -sSfL -o data/raw/cuad/data.zip https://github.com/The-Atticus-Project/cuad/raw/main/data.zip
-sha256sum data/raw/cuad/data.zip   # must match the SHA-256 above
-uv run python scripts/inspect_cuad.py data/raw/cuad/data.zip --json-out data/processed/cuad_inspection.json
+uv run python scripts/prepare_cuad.py --download   # downloads (if absent), verifies, prepares
+uv run python scripts/inspect_cuad.py data/raw/cuad/data.zip   # optional independent cross-check
 ```
 
-An automated download-and-verify step is planned for Phase 1.
+`--download` fetches the archive only if it is absent; an existing file with the wrong SHA-256
+is reported and never overwritten. See "Prepared dataset" below for the outputs.
 
 ## Schema (SQuAD 2.0 style)
 
@@ -100,8 +100,8 @@ Verified properties:
 | Contracts in both train and test | 0 |
 | Train ∪ test equals the 510 contracts of `CUADv1.json` | yes |
 
-A development split will be derived from the 408 training contracts in Phase 1, using a fixed
-seed and grouping by contract. The 102 test contracts are reserved for final evaluation only.
+The dev split derived from the 408 training contracts is described under "Prepared dataset"
+below. The 102 test contracts are reserved for final evaluation only.
 
 ## Offset integrity
 
@@ -168,6 +168,72 @@ Note that `category_descriptions.csv` in the GitHub repository uses different ca
   contract), which the relevance criterion and extraction metrics must handle explicitly.
 - **Span length.** Median gold spans are roughly 160–310 characters, which is relevant when
   choosing chunk sizes (Addendum 21.6).
+
+## Prepared dataset (Phase 1)
+
+Produced by `scripts/prepare_cuad.py` into `data/processed/cuad/` (git-ignored). Text and
+annotations come from `CUADv1.json`; the split files are used only for membership.
+
+| File | Records | Content |
+|---|---:|---|
+| `contracts.jsonl` | 510 | `contract_id`, `title`, `text`, `text_sha256` — **no annotation fields** |
+| `gold_annotations.jsonl` | 2,550 | One per (contract, target label), including empty ones: `contract_id`, `label`, `spans[{start, end, text}]` (`end` exclusive) |
+| `stats.json` | 1 | Per-split, per-label statistics |
+| `manifest.json` | 1 | Source URL, archive SHA-256, JSON version, generator version, seed, dev size, split of every contract, duplicate-text groups, SHA-256 and record count of every output file |
+
+Properties (all covered by tests):
+
+- **Reproducible:** two runs produce byte-identical files (no timestamps; sorted records and keys).
+- **Pure ASCII, LF:** non-ASCII characters are JSON-escaped, so records can only break at `\n`
+  (one contract contains U+2028 LINE SEPARATOR; see ENGINEERING_LOG LOG-005).
+- **Hash-verified loading:** `load_contracts` / `load_gold` refuse files whose SHA-256 differs
+  from the manifest.
+- **Test lock:** `load_gold(Split.TEST)` raises unless `final_evaluation=True`.
+- `contract_id` is `cuad_` + the first 12 hex digits of SHA-256(title).
+
+### Splits
+
+| Split | Contracts | Source |
+|---|---:|---|
+| train | 306 | Official train minus dev — exploration, examples |
+| dev | 102 | Sampled from official train, seed 42 — all tuning |
+| test | 102 | Official test — final evaluation only |
+
+The dev split is sampled by **document identity**: contracts with byte-identical text form one
+group and always share a split. CUAD has one such pair, both in official train:
+`cuad_8c7e7f51de1f` and `cuad_ea1bc6961e3c` (`ADUROBIOTECH…CONSULTING AGREEMENT` with and
+without a `(1)` suffix). Their annotations differ on two non-target labels (LOG-003).
+Near-duplicates are not detected.
+
+### Statistics per split
+
+Contract length in characters:
+
+| Split | Median | Mean | p95 | Max |
+|---|---:|---:|---:|---:|
+| train | 33,701 | 51,461.2 | 161,066 | 338,211 |
+| dev | 44,508.5 | 61,583.2 | 225,094 | 335,282 |
+| test | 25,657 | 46,848.2 | 145,168 | 300,768 |
+
+Target labels (A = contracts with an answer, of the split's contracts; Spans = total gold
+spans; Multi = contracts with more than one span; Overlap = pairs of spans sharing characters):
+
+| Label | train A / Spans / Multi / Overlap | dev A / Spans / Multi / Overlap | test A / Spans / Multi / Overlap |
+|---|---|---|---|
+| Governing Law | 265 / 282 / 17 / 0 | 89 / 92 / 3 / 0 | 83 / 90 / 5 / 0 |
+| Termination For Convenience | 121 / 157 / 30 / 1 | 33 / 48 / 11 / 0 | 29 / 41 / 9 / 0 |
+| Cap On Liability | 167 / 407 / 95 / 7 | 64 / 147 / 38 / 2 | 44 / 118 / 28 / 1 |
+| Renewal Term | 118 / 142 / 18 / 2 | 32 / 37 / 4 / 0 | 26 / 31 / 3 / 0 |
+| Notice Period To Terminate Renewal | 74 / 82 / 7 / 0 | 21 / 22 / 1 / 0 | 16 / 18 / 2 / 0 |
+
+Totals across all splits: 1,182 answerable (contract, label) pairs and 1,714 spans — identical
+to the independent Phase 0 inspection. No exact-duplicate spans exist; 13 span pairs overlap
+(5 of them nested), so metrics must not assume disjoint gold spans.
+
+**Dev/test shift (LOG-004):** dev contracts are longer than test contracts (median 44.5k vs
+25.7k characters) and `Cap On Liability` is more frequent in dev (64 vs 44 of 102). The seed was
+fixed before the data was seen and was not changed. Dev and test results must be reported
+separately, with this difference stated.
 
 ## All 41 labels (exact spelling in the JSON)
 

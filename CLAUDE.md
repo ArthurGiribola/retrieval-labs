@@ -25,7 +25,9 @@ live in [docs/DATASET.md](docs/DATASET.md).
 
 - Windows 11. Python 3.12 managed by **uv** (`.python-version`). Never use the system Python.
 - Install/sync: `uv sync`
-- Tests: `uv run pytest`
+- Prepare data: `uv run python scripts/prepare_cuad.py --download`
+- Tests: `uv run pytest` (tests marked `data` need the prepared dataset and skip otherwise;
+  `uv run pytest -m "not data"` runs only the self-contained tests)
 - Lint: `uv run ruff check .` — Format: `uv run ruff format .`
 - Add a dependency only in the phase that uses it: `uv add <pkg>` / `uv add --dev <pkg>`.
 
@@ -47,6 +49,13 @@ live in [docs/DATASET.md](docs/DATASET.md).
 - Gold annotations are used **only** inside evaluation code. Inference code must never receive
   them. Keep separate types for source documents, indexes, gold annotations, predictions and
   evaluation results, and test that separation.
+- Inference code takes `retrieval_labs.documents.Contract`. Only `retrieval_labs.cuad` and
+  `retrieval_labs.evaluation` may import `retrieval_labs.cuad.gold` (enforced by
+  `tests/unit/test_leakage.py`).
+- Load prepared data with `retrieval_labs.cuad.store` (`load_contracts`, `load_gold`). Never pass
+  `final_evaluation=True` outside the final test-set evaluation or integrity tests.
+- Write data files as UTF-8, LF, and pure ASCII JSON (`ensure_ascii=True`); split JSONL on `"\n"`
+  only, never `splitlines()` (see LOG-005).
 - Retrieval for an evaluation item searches only that item's own contract.
 - Splits are contract-level. The official test split (102 contracts) is never used to tune
   chunking, retrieval parameters, prompts or thresholds — use the dev split derived from train.

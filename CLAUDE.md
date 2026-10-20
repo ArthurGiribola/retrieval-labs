@@ -29,6 +29,11 @@ live in [docs/DATASET.md](docs/DATASET.md).
 - Tests: `uv run pytest` (tests marked `data` need the prepared dataset and skip otherwise;
   `uv run pytest -m "not data"` runs only the self-contained tests)
 - Lint: `uv run ruff check .` — Format: `uv run ruff format .`
+- Pipeline, free: `uv run python scripts/run_pipeline.py --dev-first 3 --dry-run` (or
+  `--provider fake`). Paid (only after owner approval of a cost estimate):
+  `uv run --env-file .env python scripts/run_pipeline.py ... --provider anthropic --max-usd X`.
+  Every paid call is budget-checked and recorded in `data/llm_ledger.jsonl` (git-ignored).
+- Never read, print or log `.env` or API keys.
 - Add a dependency only in the phase that uses it: `uv add <pkg>` / `uv add --dev <pkg>`.
 
 ## Code conventions

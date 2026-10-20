@@ -58,7 +58,9 @@ class BM25Index:
         k1, b = self._params.k1, self._params.b
         tf, length = self._tfs[position], self._lengths[position]
         total = 0.0
-        for term in query_terms:
+        # Fixed order: set iteration order varies with PYTHONHASHSEED and float addition is
+        # not associative, so summing in set order made scores process-dependent (LOG-008).
+        for term in sorted(query_terms):
             freq = tf.get(term, 0)
             if freq:
                 norm = k1 * (1 - b + b * length / self._avgdl)

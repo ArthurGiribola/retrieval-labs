@@ -7,10 +7,10 @@ from a stored run under `reports/benchmark/`; nothing is estimated or copied fro
 
 | Component | Status |
 |---|---|
-| Retrieval metrics (Recall@k, MRR, span coverage) | **Measured** on dev — Phase 3 run `phase3-bm25-dev` |
-| Presence/absence at retrieval level | **Measured** on dev (thresholds fit on train) |
+| Retrieval metrics (Recall@k, MRR, span coverage) | **Measured** on dev (Phase 3 `phase3-bm25-dev`, Phase 4 `phase4-dev`) and once on test (`phase4-test`) |
+| Presence/absence at retrieval level | **Measured** on dev and test (thresholds fit on train) |
 | Extraction metrics (EM, token P/R/F1) | Implemented and unit-tested; **pending** the paid pilot |
-| Test split | **Not used.** Runs once at the end of Phase 4 with all four methods frozen |
+| Test split | **Used once** at the end of Phase 4 (`phase4-test`), five frozen methods |
 
 ## Evaluation items
 
@@ -117,10 +117,97 @@ and caps, so lexical retrieval misses those clauses. See LOG-009.
 Queries were kept frozen in Phase 3. Any revision belongs to Phase 4, must be justified on dev,
 documented, and applied identically to all four retrieval methods.
 
+## Phase 4 results — retrieval comparison (dev, then test once)
+
+Setup frozen before the test run: chunking 150/50; queries unchanged from Phase 3 (LOG-010);
+dense `BAAI/bge-small-en-v1.5@5c38ec7c`; hybrid = reciprocal rank fusion of BM25 and dense
+(k = 60); reranking = `cross-encoder/ms-marco-MiniLM-L6-v2@233902d2` over the hybrid top 20.
+Intervals: 1000 contract-level bootstrap resamples (seed 42), 95% percentile; differences are
+paired against BM25 on the same contracts. Presence thresholds fit on train.
+
+`bm25-expanded †` uses a query expanded from the Phase 3 **dev** failure analysis. It is
+reported separately: on dev it is optimistic by construction; only its test row is a fair
+estimate.
+
+Runs: `reports/benchmark/phase4-dev/`, `reports/benchmark/phase4-dev-bm25-expanded/`,
+`reports/benchmark/phase4-test/` (test run at commit `022de41`, clean tree). Each was repeated
+with a different `PYTHONHASHSEED`; `summary.json`, item files and failure samples were
+byte-identical.
+
+### Test split (102 contracts, 198 answerable items, micro average)
+
+| Method | R@1 | R@5 | MRR@10 | ΔR@1 vs BM25 | ΔR@5 vs BM25 | ΔMRR@10 vs BM25 | Presence AUROC (macro) |
+|---|---|---|---|---|---|---|---:|
+| bm25 | 0.833 [0.766, 0.891] | 0.944 [0.906, 0.975] | 0.881 [0.828, 0.923] | — | — | — | 0.866 |
+| dense | 0.702 [0.637, 0.768] | 0.899 [0.848, 0.940] | 0.784 [0.734, 0.834] | -0.131 [-0.200, -0.058] | -0.045 [-0.089, +0.000] | -0.097 [-0.146, -0.044] | 0.818 |
+| hybrid | 0.813 [0.750, 0.871] | 0.955 [0.923, 0.979] | 0.869 [0.819, 0.912] | -0.020 [-0.063, +0.029] | +0.010 [-0.006, +0.031] | -0.012 [-0.042, +0.022] | 0.612 |
+| hybrid+rerank | 0.869 [0.815, 0.914] | 0.980 [0.959, 0.995] | 0.918 [0.883, 0.947] | +0.035 [-0.015, +0.084] | +0.035 [+0.010, +0.067] | +0.037 [+0.005, +0.070] | 0.919 |
+| bm25-expanded † | 0.879 [0.824, 0.929] | 0.975 [0.944, 0.995] | 0.919 [0.877, 0.953] | +0.045 [+0.020, +0.077] | +0.030 [+0.009, +0.058] | +0.038 [+0.020, +0.061] | 0.885 |
+
+### Dev split (102 contracts, 239 answerable items, micro average)
+
+| Method | R@1 | R@5 | MRR@10 | ΔR@1 vs BM25 | ΔR@5 vs BM25 | ΔMRR@10 vs BM25 | Presence AUROC (macro) |
+|---|---|---|---|---|---|---|---:|
+| bm25 | 0.787 [0.732, 0.838] | 0.937 [0.907, 0.966] | 0.851 [0.810, 0.888] | — | — | — | 0.842 |
+| dense | 0.611 [0.543, 0.677] | 0.866 [0.813, 0.915] | 0.720 [0.670, 0.773] | -0.176 [-0.235, -0.116] | -0.071 [-0.121, -0.027] | -0.130 [-0.173, -0.083] | 0.796 |
+| hybrid | 0.745 [0.688, 0.800] | 0.937 [0.904, 0.965] | 0.828 [0.786, 0.870] | -0.042 [-0.087, +0.000] | +0.000 [-0.031, +0.033] | -0.022 [-0.056, +0.008] | 0.597 |
+| hybrid+rerank | 0.791 [0.730, 0.847] | 0.962 [0.934, 0.987] | 0.868 [0.827, 0.906] | +0.004 [-0.038, +0.045] | +0.025 [+0.000, +0.052] | +0.018 [-0.010, +0.044] | 0.883 |
+| bm25-expanded † | 0.870 [0.825, 0.916] | 0.992 [0.978, 1.000] | 0.918 [0.888, 0.948] | +0.084 [+0.051, +0.119] | +0.054 [+0.027, +0.083] | +0.067 [+0.044, +0.094] | 0.852 |
+
+### Cap On Liability (the label with the vocabulary gap, LOG-009/010)
+
+| Method | Dev R@1 | Dev R@5 | Test R@1 | Test R@5 |
+|---|---:|---:|---:|---:|
+| bm25 | 0.562 | 0.781 | 0.614 | 0.841 |
+| dense | 0.578 | 0.844 | 0.682 | 0.886 |
+| hybrid | 0.656 | 0.906 | 0.705 | 0.864 |
+| hybrid+rerank | 0.656 | 0.906 | 0.773 | 0.932 |
+| bm25-expanded † | 0.906 | 0.969 | 0.841 | 0.977 |
+
+### Latency (one CPU development machine, single process)
+
+Primary numbers are from the warm-cache repetition (all chunk embeddings cached), stored as
+`timings-warm.json`. Query time includes query encoding and, for reranking, scoring 20
+candidates. Model load: embedder 16.0 s, reranker 0.7 s (test, warm run).
+
+| Method | Test query median ms | Test query p95 ms | Test index build median / p95 ms |
+|---|---:|---:|---:|
+| bm25 | 0.223 | 1.348 | 3.1 / 21.0 |
+| dense | 16.917 | 21.255 | 3.5 / 16.9 |
+| hybrid | 17.929 | 23.388 | 5.3 / 33.0 |
+| hybrid+rerank | 431.298 | 713.122 | 6.1 / 36.2 |
+| bm25-expanded † | 0.310 | 1.788 | 4.3 / 29.9 |
+
+First execution (cold cache, `timings.json`): on test no contract was cached, so dense index
+build (embedding every chunk) took median 1489 ms and p95 11086 ms per contract. Query medians
+were not slower cold (bm25 0.221, dense 15.674, hybrid 15.947, hybrid+rerank 407.745,
+bm25-expanded 0.256 ms); differences between the two runs are timing noise. On dev, 34 of 102 contracts were uncached in the
+first run (dense index build p95 7415 ms).
+
+### Observations
+
+- **No fair method beats BM25 by a wide margin.** Dense alone is significantly worse on both
+  splits. Hybrid ties BM25 on ranking.
+- **Hybrid + reranking is the best fair method.** On dev its gain was not significant; on test
+  R@5 (+0.035) and MRR@10 (+0.037) are significant, R@1 is not. It costs ~430 ms per query on
+  CPU versus 0.2 ms for BM25.
+- **The dev-tuned query held up on test, but smaller.** `bm25-expanded` gains roughly halved
+  from dev to test (ΔR@1 +0.084 → +0.045; ΔR@5 +0.054 → +0.030), as expected from tuning on dev.
+  On test its point estimates are close to hybrid + reranking (no paired comparison between
+  the two was run) and it is ~1400× faster per query (LOG-013).
+- **Hybrid scores cannot drive presence detection** (AUROC 0.597 dev, 0.612 test): RRF scores
+  encode ranks only (LOG-012). Reranking restores a content score and gives the best presence
+  AUROC on both splits.
+- **Test numbers are higher than dev for every method**, consistent with test contracts being
+  shorter (LOG-004). Compare methods within a split, not across splits.
+
 ## Limitations
 
-- Dev split only (102 contracts); dev contracts are longer than test contracts (LOG-004).
-- Small per-label samples (21–89 answerable items); no confidence intervals yet.
+- Phase 3 used dev only; Phase 4 used test once. Dev contracts are longer than test contracts
+  (LOG-004), so dev and test absolute numbers are not comparable.
+- Small per-label samples (16–89 answerable items per split); intervals are wide per label and
+  are reported only for micro averages.
 - Relevance is judged against CUAD spans, which inherit annotator decisions (LOG-003, LOG-009).
-- Presence detection uses the raw top-1 BM25 score, which is not calibrated across contracts.
-- Latency is from one development machine, single process.
+- Presence detection uses raw top-1 scores, which are not calibrated across contracts; RRF
+  scores are unusable for it (LOG-012).
+- Latency is from one development machine, single process, CPU only.

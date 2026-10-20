@@ -4,39 +4,39 @@ _Last updated: 2026-10-20_
 
 ## Current phase
 
-**Phase 4 — Retrieval Comparison: in progress (steps 1–8 done; waiting at step 9).**
-Plan approved: bge-small-en-v1.5 @5c38ec7c, ms-marco-MiniLM-L6-v2 @233902d2, 150/50 chunks,
-RRF k=60, 20 rerank candidates, no tuning on dev, paired contract-level bootstrap (95%),
-"BM25 + expanded query" as a separate dev-tuned row (also in the final test run). **Stop at
-step 9 and ask the owner before the single test-split run.**
+**Phase 4 — Retrieval Comparison: complete.** Waiting for owner authorization to start Phase 5.
+Frozen setup: bge-small-en-v1.5 @5c38ec7c, ms-marco-MiniLM-L6-v2 @233902d2, 150/50 chunks,
+RRF k=60, 20 rerank candidates, queries unchanged from Phase 3, paired contract-level bootstrap
+(95%), "BM25 + expanded query" as a separate dev-tuned row. Full results and observations:
+`docs/EVALUATION.md` ("Phase 4 results").
 
-Phase 4 progress:
+Phase 4 steps:
 
-1. Dependencies (sentence-transformers 6.1.0, torch 2.14.1 CPU, numpy 2.5.3) — done; two-week
-   release convention applied from Phase 4 on, earlier lock unchanged (LOG-011).
-2. Dense retrieval + embedding cache (`data/cache/embeddings/`, git-ignored) — done.
-3. Hybrid RRF — done. 4. Reranker — done. 5. Bootstrap + multi-method benchmark — done
-   (re-running the Phase 3 grid reproduces it exactly).
-6. Models downloaded and measured: 134.5 MB + 91.8 MB on disk; 0.64% of dev chunks exceed 512
-   tokens (truncated); CPU throughput 24.8 chunks/s (embedding), 40.8 pairs/s (reranker).
-7. Dev benchmark done: `reports/benchmark/phase4-dev/`. A second run (`PYTHONHASHSEED=97`,
-   warm cache) gave byte-identical `summary.json`, item files and failure samples; only timings
-   and provenance differ. First-run dense latency p95 includes 34 cache misses.
-8. `bm25-expanded` dev run done: `reports/benchmark/phase4-dev-bm25-expanded/`.
-9. **Next: pause for owner authorization of the single test run** (`--final`, all methods
-   frozen). 10. Docs and stop.
+1. Dependencies (sentence-transformers 6.1.0, torch 2.14.1 CPU, numpy 2.5.3); two-week release
+   convention applied from Phase 4 on, earlier lock unchanged (LOG-011).
+2. Dense retrieval + embedding cache (`data/cache/embeddings/`, git-ignored).
+3. Hybrid RRF. 4. Reranker. 5. Bootstrap + multi-method benchmark.
+6. Models: 134.5 MB + 91.8 MB on disk; 0.64% of dev chunks exceed 512 tokens (truncated);
+   CPU throughput 24.8 chunks/s (embedding), 40.8 pairs/s (reranker).
+7. Dev benchmark: `reports/benchmark/phase4-dev/`. 8. `bm25-expanded` on dev:
+   `reports/benchmark/phase4-dev-bm25-expanded/`.
+9. Owner authorized the single test run: `reports/benchmark/phase4-test/` (commit `022de41`,
+   clean tree, `--final`, five frozen methods). **The test split is now spent.**
+10. Every run repeated with `PYTHONHASHSEED=97`: byte-identical `summary.json`, item files and
+    failure samples. Warm-cache timings stored as `timings-warm.json` (primary latency, owner
+    decision); first-run timings in `timings.json`.
 
-Phase 4 dev headline (150/50, micro over 239 answerable items, 95% bootstrap CI; Δ paired vs BM25):
+Phase 4 headline (150/50, micro average, 95% bootstrap CI; Δ paired vs BM25):
 
-| Method | R@1 | R@5 | MRR@10 | ΔR@5 vs BM25 | Presence AUROC (macro) |
-|---|---:|---:|---:|---|---:|
-| bm25 | 0.787 | 0.937 | 0.851 | — | 0.842 |
-| dense | 0.611 | 0.866 | 0.720 | -0.071 [-0.121, -0.027] | 0.796 |
-| hybrid | 0.745 | 0.937 | 0.828 | +0.000 [-0.031, +0.033] | 0.597 (LOG-012) |
-| hybrid+rerank | 0.791 | 0.962 | 0.868 | +0.025 [+0.000, +0.052] | 0.883 |
-| bm25-expanded † | 0.870 | 0.992 | 0.918 | +0.054 [+0.027, +0.083] | 0.852 |
+| Method | Test R@1 | Test R@5 | Test MRR@10 | Test ΔR@5 vs BM25 | Dev ΔR@5 vs BM25 | Test presence AUROC | Test query median (warm) |
+|---|---:|---:|---:|---|---|---:|---:|
+| bm25 | 0.833 | 0.944 | 0.881 | — | — | 0.866 | 0.22 ms |
+| dense | 0.702 | 0.899 | 0.784 | -0.045 [-0.089, +0.000] | -0.071 [-0.121, -0.027] | 0.818 | 16.9 ms |
+| hybrid | 0.813 | 0.955 | 0.869 | +0.010 [-0.006, +0.031] | +0.000 [-0.031, +0.033] | 0.612 (LOG-012) | 17.9 ms |
+| hybrid+rerank | 0.869 | 0.980 | 0.918 | +0.035 [+0.010, +0.067] | +0.025 [+0.000, +0.052] | 0.919 | 431 ms |
+| bm25-expanded † | 0.879 | 0.975 | 0.919 | +0.030 [+0.009, +0.058] | +0.054 [+0.027, +0.083] | 0.885 | 0.31 ms |
 
-† Tuned on dev; optimistic by construction, not part of the fair comparison.
+† Query tuned on dev; its dev gain roughly halved on test (LOG-013).
 
 Phase 3 (complete): BM25 retrieval and retrieval-level presence measured on dev
 (`docs/EVALUATION.md`). LLM extraction metrics implemented and unit-tested, **pending the
@@ -80,18 +80,19 @@ Phase 3 — Initial Evaluation:
 
 | Command | Result |
 |---|---|
-| `uv run pytest` | 177 passed (includes 6 `data` tests and the hash-seed subprocess test) |
+| `uv run pytest` | 212 passed (includes 6 `data` tests and the hash-seed subprocess test) |
 | `uv run ruff check .` / `ruff format --check .` | Clean |
 | `run_benchmark.py` twice, `PYTHONHASHSEED` 11 and 97 | All outputs byte-identical (except run name) |
-| `run_pipeline.py --dev-first 3 --text-dir data/fixtures/adversarial --dry-run` | Unchanged after Phase 3 refactor: worst case US$ 0.0937 |
+| Phase 4 runs (dev, dev expanded, test) repeated with `PYTHONHASHSEED=97` | `summary.json`, item files, failure samples byte-identical; only timings/provenance differ |
+| `run_pipeline.py --dev-first 3 --text-dir data/fixtures/adversarial --dry-run` | Unchanged after Phase 4: worst case US$ 0.0937 |
 
 Project LLM spend so far: US$ 0.00.
 
 ## Important technical decisions
 
 1. Relevance criterion fixed before experiments; any-overlap and containment are sensitivity only.
-2. Phase 3 uses dev only; test runs once at the end of Phase 4 with all four methods frozen.
-3. Presence thresholds fit on train, reported on dev.
+2. Phase 3 used dev only; test was used once at the end of Phase 4 with five frozen methods.
+3. Presence thresholds fit on train, reported on dev and test.
 4. Benchmark and application share `ContractSearch`, so they cannot drift apart.
 5. Queries frozen during Phase 3; failure analysis informs Phase 4.
 6. Extraction path must stay runnable (CLAUDE.md); its tests passed unchanged after the refactor.
@@ -106,8 +107,10 @@ Project LLM spend so far: US$ 0.00.
 
 ## Pending tasks / next recommended action
 
-1. Phase 4 plan (dense, hybrid, hybrid + reranking) — awaiting owner review, including model
-   names, sizes and licenses before any download.
+1. **Owner decision for Phase 5:** which retrieval method the application uses. Evidence:
+   hybrid + reranking is the best fair method (~430 ms/query on CPU); `bm25-expanded` has close
+   point estimates at ~0.3 ms but its query was tuned on dev; hybrid alone must not be used for
+   presence detection (LOG-012). Then authorize Phase 5.
 2. **Deferred: paid pilot** — `ANTHROPIC_API_KEY` in `.env`, then
    `uv run --env-file .env python scripts/run_pipeline.py --dev-first 3 --text-dir
    data/fixtures/adversarial --provider anthropic --max-usd 0.25`. After it: run the extraction
@@ -118,9 +121,10 @@ Project LLM spend so far: US$ 0.00.
 ## Known problems / risks
 
 - Dev contracts are longer than test contracts (LOG-004); dev and test results not comparable.
-- Small per-label samples (21–89 answerable dev items); no confidence intervals yet.
+- Small per-label samples (16–89 answerable items per split); intervals only on micro averages.
 - Retrieval-level presence detection is weak for Termination for Convenience and the renewal
-  notice period (AUROC ≈ 0.74–0.82).
+  notice period (BM25 AUROC ≈ 0.74–0.82); RRF scores are unusable for it (LOG-012).
+- The test split has been used; any further tuning needs a new held-out set.
 - Long gold spans straddle chunks; extraction can only quote what retrieved passages contain.
 - Verification proves a quote exists, not that it is a legitimate clause (adversarial pilot).
 - Near-duplicate contracts are not detected; LLM outputs are not deterministic.

@@ -394,3 +394,30 @@ Entry template:
   its scores were almost constant because RRF only looks at ranks, so they could not tell
   whether a clause existed. A good ranking metric is not a good confidence signal; the
   cross-encoder reranker fixed it by re-scoring content.
+
+## LOG-013 — Single test run: dev-tuned query gain halves, reranking becomes significant
+
+- **Date / Phase:** 2026-10-20 / Phase 4
+- **Category:** surprising result / decision
+- **Context:** The single test-split run (`reports/benchmark/phase4-test/`, commit `022de41`,
+  clean tree), five methods frozen after the dev comparison, authorized by the owner.
+- **The problem:** Two things had to be checked on unseen contracts: whether the query expanded
+  from the dev failure analysis (LOG-010) only memorized dev, and whether the small,
+  non-significant dev gain of hybrid + reranking was real.
+- **How it was found:** Paired contract-level bootstrap against BM25 on test, compared with
+  the same intervals on dev.
+- **Impact if missed:** Reporting the dev numbers of `bm25-expanded` would overstate its gain
+  about twofold; dropping reranking on dev evidence would have discarded the best fair method.
+- **Fix / decision:** Both kept as reported. `bm25-expanded` gains roughly halved but stayed
+  positive: ΔR@1 +0.084 [+0.051, +0.119] on dev vs +0.045 [+0.020, +0.077] on test; ΔR@5
+  +0.054 vs +0.030 [+0.009, +0.058]. Hybrid + reranking went from ΔR@5 +0.025 [+0.000, +0.052]
+  on dev to +0.035 [+0.010, +0.067] on test, and ΔMRR@10 +0.037 [+0.005, +0.070]. The test split
+  is now spent; no parameter may be changed using these numbers.
+- **Evidence:** `docs/EVALUATION.md` (Phase 4 results); repeating the test run with
+  `PYTHONHASHSEED=97` gave byte-identical `summary.json`, item files and failure samples.
+  Warm-cache query medians: BM25 0.22 ms, `bm25-expanded` 0.31 ms, hybrid + reranking 431 ms.
+- **Interview version:** I tuned one query on dev and kept it out of the fair comparison;
+  on the held-out test its gain was about half the dev gain, which is the optimism you expect
+  from tuning on the evaluation set. The cross-encoder reranker, which was not significant on
+  dev, was significant on test. A cheap, targeted query fix matched the neural reranker at
+  roughly 1/1400 of the query latency.

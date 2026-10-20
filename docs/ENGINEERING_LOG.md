@@ -334,3 +334,35 @@ Entry template:
   hybrid retrieval was to see whether they close that gap on their own. The tuned query is
   reported as a separate, clearly labeled row, so nobody confuses a fitted baseline with a fair
   one."
+
+## LOG-011 — The "two-week-old releases" convention was not applied before Phase 4
+
+- **Date / Phase:** 2026-10-20 / Phase 4
+- **Category:** risk / decision
+- **Context:** Adding the Phase 4 dependencies (sentence-transformers, CPU torch) with uv's
+  `exclude-newer` set to 2026-10-06, so only releases at least two weeks old resolve. This is a
+  supply-chain caution convention introduced during the project; it is not in the brief (the
+  Phase 4 plan wrongly called it a "project rule").
+- **The problem:** The global cutoff made the existing lock unsatisfiable. Checking every locked
+  package against PyPI upload dates showed 9 of the Phase 0–2 dependencies were published after
+  the cutoff, e.g. `anthropic` 1.15.0 (2026-10-15, installed 5 days after release),
+  `pydantic` 2.14.1 (2026-10-11), `ruff` 0.17.1 (2026-10-15). The convention had simply never
+  been applied before.
+- **How it was found:** `uv add` failed resolution under the cutoff; a script then listed the
+  upload date of every locked version instead of fixing conflicts one at a time.
+- **Impact if missed:** A rule claimed but not enforced. Applying it retroactively would have
+  downgraded a tested environment (pydantic, ruff, the Anthropic SDK whose behavior LOG-007
+  verified) just to satisfy a convention.
+- **Fix / decision (owner):** The convention applies to packages added from Phase 4 on; the
+  Phase 0–2 lock stays unchanged. New direct dependencies are pinned (sentence-transformers
+  6.1.0, torch 2.14.1, numpy 2.5.3), and every new transitive dependency was checked: 6 were
+  newer than the cutoff (certifi, cuda-bindings, filelock, narwhals, setuptools, tokenizers) and
+  are pinned via `[tool.uv] constraint-dependencies` to their latest pre-cutoff release, along
+  with transformers 5.18.0. Result: 54 new locked packages, none newer than the cutoff, and no
+  pre-existing pin changed.
+- **Evidence:** `pyproject.toml` `[tool.uv]`; date check of all 54 new lock entries; full test
+  suite (177 passed) and the extraction dry run (US$ 0.0937) unchanged after the install.
+- **Interview version:** "I had a rule to only install releases at least two weeks old, but when
+  I enforced it with the package manager, it showed I'd never actually applied it. Rather than
+  silently downgrade a tested environment, I made the rule apply from that point on, pinned the
+  six recent transitive dependencies explicitly, and verified every new package's release date."

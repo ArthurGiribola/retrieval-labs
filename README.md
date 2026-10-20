@@ -129,9 +129,7 @@ docs/            evaluation, dataset notes, decisions, engineering log
 
 ## Demo
 
-<!-- Screenshot or GIF of the demo goes here, e.g.:
-![Retrieval Labs demo](docs/images/demo.png)
--->
+![Retrieval Labs demo: top passages for each clause type in a CUAD test contract](docs/images/demo.png)
 
 A Streamlit app shows, for any contract of the CUAD test split, the top five passages
 retrieved for each clause type and whether the best one clears the presence threshold, next

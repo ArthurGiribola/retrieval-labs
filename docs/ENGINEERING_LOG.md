@@ -217,3 +217,36 @@ Entry template:
   terms in more than half the documents and patches it with a vocabulary-wide average. I measured
   that this mostly touches stopwords, so the gain isn't accuracy; it's that every score in my
   system is a formula I can write on a whiteboard and test by hand."
+
+## LOG-007 — `messages.parse` would hide the cost of truncated or refused calls
+
+- **Date / Phase:** 2026-10-20 / Phase 2
+- **Category:** risk / decision
+- **Context:** Implementing the Claude extractor with structured outputs. The SDK's recommended
+  helper is `client.messages.parse(output_format=PydanticModel)`. Every paid call must be
+  recorded in the spend ledger, because the project has a hard US$ 20 budget.
+- **The problem:** In `anthropic` 1.15.0, `parse` validates the JSON of every text block inside
+  the call (`TypeAdapter.validate_json` in `lib/_parse/_response.py`). A response cut off by
+  `max_tokens`, or any text that does not match the schema, raises `ValidationError` from the
+  call itself — so the caller never receives the message, its `stop_reason`, or its `usage`,
+  even though the call was billed.
+- **How it was found:** Reading the installed SDK source before choosing between `parse` and
+  `create`, then demonstrating it offline: a `Message` with `stop_reason="max_tokens"`, a
+  truncated JSON text block and `usage.output_tokens=4000` passed to the SDK's
+  `parse_response` raised `pydantic_core.ValidationError`.
+- **Impact if missed:** Truncated calls are the most expensive ones (they used the whole
+  `max_tokens`), and they would be exactly the calls missing from the ledger, so the budget
+  guard would under-count spend precisely when it matters. The pipeline would also crash
+  instead of reporting the clause as `UNCERTAIN`.
+- **Fix / decision:** Call `messages.create` with
+  `output_config={"effort": ..., "format": {"type": "json_schema", "schema":
+  anthropic.transform_schema(...)}}` (the same schema conversion `parse` uses), read `usage`
+  first, check `stop_reason` (`refusal`, `max_tokens`), and only then validate the JSON. Every
+  failure returns a response with usage and a reason; the clause becomes `UNCERTAIN`.
+- **Evidence:** `src/retrieval_labs/extraction/anthropic_extractor.py`;
+  `tests/unit/test_anthropic_extractor.py::test_failures_keep_usage_so_cost_is_never_lost`
+  (truncated, refused, schema-invalid and empty responses all keep their cost).
+- **Interview version:** "The SDK's parse helper validates the JSON inside the call, so a
+  truncated response throws before you can read its token usage. Those are the most expensive
+  calls, and they'd be invisible to my budget guard. I call the lower-level endpoint with the
+  same schema, record usage first, and validate afterwards."

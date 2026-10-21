@@ -461,3 +461,29 @@ Entry template:
 - **Interview version:** Running the demo for the first time, I noticed Streamlit bound to all
   interfaces and enabled telemetry by default. For a tool that displays contracts, I made it
   local-only and opt-out of telemetry in versioned config, and checked the listeners after.
+
+## LOG-016 — On Linux, the locked torch pulled about 2.4 GB of CUDA packages
+
+- **Date / Phase:** 2026-10-21 / CI (before Phase 6)
+- **Category:** performance / decision
+- **Context:** Planning the GitHub Actions workflow, which runs on Linux.
+- **The problem:** The torch 2.14.1 entry in `uv.lock` comes from PyPI, whose Linux wheel
+  depends on 19 packages marked `sys_platform == 'linux'` (`nvidia-*`, `cuda-*`, `triton`).
+  Their x86_64 wheels in the lock add up to about 2.45 GB, on top of the 555 MB torch wheel.
+  On Windows the PyPI wheel is already CPU-only (124 MB), so local use never showed it.
+- **How it was found:** Reading torch's dependencies in `uv.lock` and summing the recorded
+  wheel sizes; checking that `download.pytorch.org/whl/cpu` serves
+  `torch-2.14.1+cpu-cp312-cp312-manylinux_2_28_x86_64.whl` (196 MB).
+- **Impact if missed:** Every CI run, and any Linux install or deploy, would download and
+  cache gigabytes of GPU libraries the project never uses (all models run on CPU, and the
+  tests never import torch).
+- **Fix / decision:** An explicit `pytorch-cpu` index in `pyproject.toml`, used for torch
+  only when `sys_platform == 'linux'`. After `uv lock`, the 19 packages were removed, Linux
+  resolves `torch==2.14.1+cpu`, the Windows wheel URL and hash are unchanged, and no other
+  package version changed. `uv sync --locked` and the full test suite (226 passed) still pass
+  on Windows.
+- **Evidence:** `uv lock` output; `pyproject.toml` (`[tool.uv.sources]`); `uv.lock` diff.
+- **Interview version:** Setting up CI, I noticed the lockfile would make Linux install CUDA,
+  about 2.4 GB, for a CPU-only project, because the Windows wheel I used locally hides it.
+  A platform-scoped source sends Linux to PyTorch's CPU index while the Windows lock entry
+  stays byte-identical.

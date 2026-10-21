@@ -1,0 +1,47 @@
+# Lint, format check, self-contained unit tests and a synthetic evaluation smoke test.
+# Never downloads CUAD or model weights; the full benchmark runs locally (scripts/run_benchmark.py).
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Any accidental model download fails instead of pulling weights.
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.13.2"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-python: true
+
+      - name: Install dependencies (locked, CPU-only torch)
+        run: uv sync --locked
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Format check
+        run: uv run ruff format --check .
+
+      - name: Unit tests (no CUAD, no models)
+        run: uv run pytest -m "not data and not smoke"
+
+      - name: Evaluation smoke test (synthetic fixture, not benchmark results)
+        run: uv run pytest -m smoke

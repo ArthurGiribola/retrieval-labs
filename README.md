@@ -1,5 +1,7 @@
 # Retrieval Labs
 
+[![CI](https://github.com/ArthurGiribola/retrieval-labs/actions/workflows/ci.yml/badge.svg)](https://github.com/ArthurGiribola/retrieval-labs/actions/workflows/ci.yml)
+
 Finding the evidence for contract clauses, and measuring how well different retrieval methods
 do it. Retrieval Labs searches each contract in the
 [CUAD](https://www.atticusprojectai.org/cuad) dataset for five clause types (governing law,
@@ -164,6 +166,12 @@ uv run python scripts/run_pipeline.py --dev-first 3 --dry-run
 Benchmark outputs are deterministic: running the same benchmark twice with different
 `PYTHONHASHSEED` values produced byte-identical summaries and per-item results. The test
 split requires `--final` and was used once.
+
+CI (GitHub Actions, Linux) runs ruff lint and format checks, the unit tests that need neither
+CUAD nor model weights, and a deterministic evaluation smoke test on a synthetic fixture
+(`pytest -m smoke`). The smoke test checks that evaluation runs; its numbers are not benchmark
+results. The full benchmark runs locally. On Linux, torch comes from the CPU-only PyTorch
+index, so installs skip about 2.4 GB of CUDA packages.
 
 ## Status
 

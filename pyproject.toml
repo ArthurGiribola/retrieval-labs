@@ -44,6 +44,16 @@ constraint-dependencies = [
     "websockets==17.2",
 ]
 
+# On Linux, PyPI's torch wheel pulls ~2.4 GB of CUDA packages (LOG-016). The project runs on
+# CPU, so Linux (CI included) uses the CPU build; Windows and macOS keep the PyPI wheel.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"
@@ -67,4 +77,5 @@ pythonpath = ["tests"]
 addopts = ["-ra", "--strict-markers", "--import-mode=importlib"]
 markers = [
     "data: requires the real CUAD dataset prepared under data/ (skipped when absent)",
+    "smoke: deterministic evaluation on the synthetic CUAD fixture (CI smoke test, not results)",
 ]

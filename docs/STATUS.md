@@ -1,8 +1,17 @@
 # Status
 
-_Last updated: 2026-10-20_
+_Last updated: 2026-10-21_
 
 ## Current phase
+
+**CI (brief 14.2): added before Phase 6.** `.github/workflows/ci.yml` runs on every push and
+pull request, Linux only (owner decision; Windows is covered by local use): ruff lint and
+format check, `pytest -m "not data and not smoke"`, and a separate `pytest -m smoke` step
+(synthetic-fixture evaluation, not benchmark results). It downloads neither CUAD nor model
+weights (`HF_HUB_OFFLINE=1`). uv cache is keyed on `uv.lock`. On Linux, torch now comes
+from the PyTorch CPU index, which removes 19 CUDA packages (~2.4 GB) from the lock; the
+Windows and macOS torch wheels are unchanged (LOG-016). Actions pinned by commit SHA,
+releases at least two weeks old. CI badge at the top of the README.
 
 **Minimum publishable version (brief 21.2, D-002): complete.** Waiting for the owner's demo
 screenshot, the decision to make the repository public, and authorization to start Phase 5.
@@ -98,6 +107,7 @@ Phase 3 — Initial Evaluation:
 |---|---|
 | `uv run pytest` | 226 passed (includes 7 `data` tests and the hash-seed subprocess test) |
 | `uv run ruff check .` / `ruff format --check .` | Clean |
+| `uv run pytest -m "not data and not smoke"` / `-m smoke` | 211 passed / 8 passed (CI steps, run locally) |
 | `run_benchmark.py` twice, `PYTHONHASHSEED` 11 and 97 | All outputs byte-identical (except run name) |
 | `streamlit run demo/streamlit_app.py` (headless) | Health `ok`; only listener 127.0.0.1 |
 | Phase 4 runs (dev, dev expanded, test) repeated with `PYTHONHASHSEED=97` | `summary.json`, item files, failure samples byte-identical; only timings/provenance differ |
@@ -113,6 +123,8 @@ Project LLM spend so far: US$ 0.00.
 4. Benchmark and application share `ContractSearch`, so they cannot drift apart.
 5. Queries frozen during Phase 3; failure analysis informs Phase 4.
 6. Extraction path must stay runnable (CLAUDE.md); its tests passed unchanged after the refactor.
+7. Linux installs use CPU-only torch (`[tool.uv.sources]`, LOG-016); a future GPU deployment
+   would need to revisit this.
 
 ## Owner decisions (end of Phase 3)
 

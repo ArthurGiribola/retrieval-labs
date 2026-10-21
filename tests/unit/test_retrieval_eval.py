@@ -15,6 +15,8 @@ from retrieval_labs.ingestion.chunking import ChunkingConfig
 from retrieval_labs.retrieval.bm25 import BM25Retriever
 from synthetic_cuad import ALPHA
 
+pytestmark = pytest.mark.smoke
+
 SMALL = ChunkingConfig(window_words=8, overlap_words=3)
 
 

@@ -1,0 +1,6 @@
+# Development override: publishes Postgres on the loopback interface only, so integration
+# tests can run from the host. Use: docker compose -f compose.yaml -f compose.dev.yaml up -d
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:55432:5432"

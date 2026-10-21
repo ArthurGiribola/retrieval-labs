@@ -4,6 +4,22 @@ _Last updated: 2026-10-21_
 
 ## Current phase
 
+**Phase 6 — Backend and Infrastructure: in progress** (plan approved 2026-10-21; Phase 5
+deferred by the owner, so no `alerts` table yet; uploads are UTF-8 `.txt` only; model
+weights will be downloaded once into a Docker volume, after owner approval). The owner
+authorizes each step separately.
+
+- **Step 1, database: done.** `retrieval_labs.db` (SQLAlchemy 2.1.4, psycopg 3.3.6, pgvector
+  0.5.0): `documents`, `chunks` (`vector(384)`, nullable for BM25), `processing_jobs`
+  (`job_state` enum: PENDING/RUNNING/COMPLETED/FAILED), `analysis_results` (JSONB report).
+  Alembic 1.20.0 migration `0001`; a test compares the migrated schema with the models.
+  `compose.yaml` runs `pgvector/pgvector:0.8.7-pg18` with no published port;
+  `compose.dev.yaml` publishes it on `127.0.0.1:55432` only. Integration tests
+  (`-m integration`) need `TEST_DATABASE_URL`, refuse database names not ending in `_test`,
+  and run in a new CI job with a Postgres service container. `retrieval_labs.db` is in the
+  leakage test's inference modules.
+- Next: step 2, persistence and synchronous job processing.
+
 **CI (brief 14.2): added before Phase 6.** `.github/workflows/ci.yml` runs on every push and
 pull request, Linux only (owner decision; Windows is covered by local use): ruff lint and
 format check, `pytest -m "not data and not smoke"`, and a separate `pytest -m smoke` step

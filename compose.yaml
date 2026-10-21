@@ -1,0 +1,22 @@
+# Local stack. Nothing here is reachable from the network: services publish no ports
+# (compose.dev.yaml publishes Postgres on 127.0.0.1 only, for tests run from the host).
+name: retrieval-labs
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.7-pg18
+    environment:
+      POSTGRES_USER: retrieval_labs
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-retrieval_labs}
+      POSTGRES_DB: retrieval_labs
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U retrieval_labs -d retrieval_labs"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  postgres-data:

@@ -41,7 +41,42 @@ jobs:
         run: uv run ruff format --check .
 
       - name: Unit tests (no CUAD, no models)
-        run: uv run pytest -m "not data and not smoke"
+        run: uv run pytest -m "not data and not smoke and not integration"
 
       - name: Evaluation smoke test (synthetic fixture, not benchmark results)
         run: uv run pytest -m smoke
+
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.7-pg18
+        env:
+          POSTGRES_USER: retrieval_labs
+          POSTGRES_PASSWORD: retrieval_labs
+          POSTGRES_DB: retrieval_labs_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U retrieval_labs -d retrieval_labs_test"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+    env:
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+      TEST_DATABASE_URL: postgresql+psycopg://retrieval_labs:retrieval_labs@localhost:5432/retrieval_labs_test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.13.2"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-python: true
+
+      - name: Install dependencies (locked, CPU-only torch)
+        run: uv sync --locked
+
+      - name: Integration tests (PostgreSQL + pgvector service)
+        run: uv run pytest -m integration

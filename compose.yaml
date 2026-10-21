@@ -1,6 +1,25 @@
-# Local stack. Nothing here is reachable from the network: services publish no ports
-# (compose.dev.yaml publishes Postgres and Redis on 127.0.0.1 only, for tests run from the host).
+# Local stack: api, worker, postgres, redis, plus one-off migrate and models steps.
+# Only the API publishes a port, on 127.0.0.1 (it has no authentication; LOG-015 rule).
+# compose.dev.yaml also publishes Postgres and Redis on 127.0.0.1, for tests run from the host.
+#
+#   docker compose --profile setup run --rm models   # once: pinned model weights (~216 MiB)
+#   docker compose up -d --build --wait
 name: retrieval-labs
+
+x-app: &app
+  image: retrieval-labs:local
+  build: .
+  environment: &app-env
+    DATABASE_URL: postgresql+psycopg://retrieval_labs:${POSTGRES_PASSWORD:-retrieval_labs}@postgres:5432/retrieval_labs
+    REDIS_URL: redis://redis:6379/0
+    RETRIEVER: ${RETRIEVER:-hybrid+rerank}
+    # Fixed to the free extractor: the spending ledger lives on the host (data/), so a paid
+    # worker here would keep a second ledger and the project cap could be exceeded unseen.
+    # The paid pilot runs through scripts/run_pipeline.py on the host (CLAUDE.md).
+    LLM_PROVIDER: fake
+    JOB_TIMEOUT_S: ${JOB_TIMEOUT_S:-900}
+    MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-2000000}
+    LOG_LEVEL: ${LOG_LEVEL:-INFO}
 
 services:
   postgres:
@@ -31,6 +50,65 @@ services:
       timeout: 5s
       retries: 30
 
+  migrate:
+    <<: *app
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  models:
+    # The only step that goes online: checks the pinned revisions and file sizes with the
+    # Hugging Face API, then downloads exactly those files into the hf-models volume.
+    <<: *app
+    profiles: ["setup"]
+    command: ["python", "scripts/download_models.py"]
+    environment:
+      HF_HUB_OFFLINE: "0"
+    volumes:
+      - hf-models:/models
+    restart: "no"
+
+  worker:
+    <<: *app
+    command: ["python", "-m", "retrieval_labs.worker.main"]
+    volumes:
+      - hf-models:/models:ro
+      - embedding-cache:/app/data/cache
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  api:
+    <<: *app
+    environment:
+      <<: *app-env
+      # Inside the container only; the host sees the port on 127.0.0.1 alone (below).
+      API_HOST: 0.0.0.0
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
 volumes:
   postgres-data:
   redis-data:
+  hf-models:
+  embedding-cache:

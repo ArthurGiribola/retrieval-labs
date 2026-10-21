@@ -69,8 +69,28 @@ authorizes each step separately.
     that no contract text appears. Logging a slice of the text on purpose made both log
     tests fail.
   - Real processes: 9 API and 12 worker log lines, all JSON, no contract text.
-- Next: step 6, Docker image and full Compose stack (asks owner approval before the model
-  download).
+- **Step 6, Docker and the full stack: done.**
+  - **Image:** `Dockerfile` (`python:3.12.14-slim-trixie`, uv 0.13.2, non-root,
+    `uv sync --locked --no-dev --no-group demo`), one image for every service. The build
+    fails unless torch is `+cpu` and no `nvidia-*`/`cuda-*`/`triton` package is installed:
+    "torch 2.14.1+cpu, 69 packages, none CUDA". Image 2.09 GB, of which the venv is 1.5 GB
+    (torch 768 MB unpacked). A CI `image` job builds it on every push.
+  - **Compose:** `api`, `worker`, `postgres`, `redis` plus one-off `migrate` and `models`
+    (profile `setup`). Only the API publishes a port, on `127.0.0.1:8000` (`netstat`
+    confirmed it is the only listener). Containers run the free extractor only, with no API
+    key (LOG-018).
+  - **Models** (owner approved): `scripts/download_models.py` asked the Hugging Face API to
+    confirm both pinned commits and the exact size of 17 files (226,321,698 bytes,
+    215.8 MiB), then downloaded exactly those into the `hf-models` volume in 23 s. API and
+    worker run offline; the worker loaded both models from the volume.
+  - **Acceptance** (`scripts/api_smoke.py`): a median-length CUAD test contract (25,922
+    characters, text only) went through the API to the containerized worker and was
+    COMPLETED with `hybrid+rerank` in 6.1 s (3.4 s first-time embedding, 2.4 s retrieval
+    for five clauses); 39 chunks stored with 384-dimension embeddings. After restarting the
+    whole stack, the status and report were still served.
+  - **Logs:** all 28 API and worker log lines were JSON once transformers' progress bars were
+    disabled.
+- Next: step 7, documentation and closing the phase.
 
 **CI (brief 14.2): added before Phase 6.** `.github/workflows/ci.yml` runs on every push and
 pull request, Linux only (owner decision; Windows is covered by local use): ruff lint and

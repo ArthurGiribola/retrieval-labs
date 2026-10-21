@@ -510,3 +510,27 @@ Entry template:
 - **Interview version:** A test of the "queue is down" path passed, but slowly: 49 seconds.
   The Redis client's default retry policy, sensible for a background worker, was wrong for
   a request handler. I gave the API its own fail-fast client and pinned the time in the test.
+
+## LOG-018 — The containerized worker cannot use the paid extractor
+
+- **Date / Phase:** 2026-10-21 / Phase 6, step 6
+- **Category:** decision / risk
+- **Context:** Wiring the worker into Docker Compose. The worker supports
+  `LLM_PROVIDER=anthropic` with a `SpendLedger` that records every paid call in
+  `data/llm_ledger.jsonl` and enforces the US$ 20 project cap from that file.
+- **The problem:** Inside a container, that path is the container's own filesystem (or a
+  volume), not the host's `data/`. A paid worker in Docker would keep a second ledger, start
+  from zero spend, and the project cap could be exceeded with neither ledger noticing.
+- **How it was found:** Reading `SpendLedger` (`extraction/budget.py`): the project total is
+  the sum of the entries in the one ledger file it was given.
+- **Impact if missed:** A real risk to the hard budget rule (brief 21.4), invisible until
+  the bill.
+- **Fix / decision:** `compose.yaml` hard-codes `LLM_PROVIDER: fake` for every service and
+  passes no `ANTHROPIC_API_KEY`; `tests/unit/test_infrastructure.py` enforces both. The paid
+  pilot stays on the host through `scripts/run_pipeline.py`, with the single ledger. Enabling
+  paid extraction in containers would first need a shared ledger, which is a separate
+  decision.
+- **Evidence:** `compose.yaml`; `tests/unit/test_infrastructure.py`.
+- **Interview version:** The budget guard only works if every paid caller writes to the same
+  ledger. Containerizing the worker would have silently split it, so I kept containers on
+  the free extractor and made a test fail if anyone hands them the paid one.

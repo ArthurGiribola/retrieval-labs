@@ -1,0 +1,13 @@
+# Only what the image needs: no datasets, caches, secrets, git history or local environments.
+*
+!pyproject.toml
+!uv.lock
+!.python-version
+!README.md
+!src/
+!alembic.ini
+!migrations/
+!reports/benchmark/
+!scripts/download_models.py
+!docker/check_cpu_only.py
+**/__pycache__

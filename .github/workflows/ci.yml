@@ -88,3 +88,16 @@ jobs:
 
       - name: Integration tests (PostgreSQL + pgvector and Redis services)
         run: uv run pytest -m integration
+
+  image:
+    # Builds the Docker image; the build fails if any CUDA package gets installed (LOG-016).
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Build image (CPU-only torch check runs inside)
+        run: docker build --progress=plain -t retrieval-labs:ci . 2>&1 | tee build.log
+
+      - name: Confirm the CPU-only check ran
+        run: grep -q "CPU-only: torch" build.log

@@ -86,17 +86,17 @@ matching already captures.
 
 ```mermaid
 flowchart LR
-    A[CUAD raw JSON] -->|prepare_cuad.py<br/>SHA-256 verified| B[Contracts<br/>train / dev / test]
-    A --> G[(Gold annotations)]
-    B --> C[Chunking<br/>150 words, 50 overlap<br/>exact character offsets]
-    C --> D1[BM25]
-    C --> D2[Dense<br/>bge-small-en-v1.5]
-    D1 --> E[Reciprocal rank fusion]
+    A["CUAD raw JSON"] -->|"prepare_cuad.py<br/>SHA-256 verified"| B["Contracts<br/>train / dev / test"]
+    A --> G[("Gold annotations")]
+    B --> C["Chunking<br/>150 words, 50 overlap<br/>exact character offsets"]
+    C --> D1["BM25"]
+    C --> D2["Dense<br/>bge-small-en-v1.5"]
+    D1 --> E["Reciprocal rank fusion"]
     D2 --> E
-    E --> F[Cross-encoder rerank<br/>ms-marco-MiniLM-L6-v2, top 20]
-    F --> H[Top-5 passages + presence threshold]
-    H --> I[LLM extraction<br/>verbatim quotes verified<br/>implemented, not yet evaluated]
-    H --> J[Benchmark<br/>Recall@k, MRR, AUROC, bootstrap]
+    E --> F["Cross-encoder rerank<br/>ms-marco-MiniLM-L6-v2, top 20"]
+    F --> H["Top-5 passages + presence threshold"]
+    H --> I["LLM extraction<br/>verbatim quotes verified<br/>implemented, not yet evaluated"]
+    H --> J["Benchmark<br/>Recall@k, MRR, AUROC, bootstrap"]
     G --> J
 ```
 

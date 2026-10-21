@@ -14,9 +14,10 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import Engine, create_engine, make_url, text
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from retrieval_labs.db.models import Base
+from retrieval_labs.db.session import make_session_factory
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -59,10 +60,21 @@ def engine(test_database_url: str, migrations: Config) -> Iterator[Engine]:
     engine.dispose()
 
 
+def truncate_all(engine: Engine) -> None:
+    tables = ", ".join(table.name for table in Base.metadata.sorted_tables)
+    with engine.begin() as connection:
+        connection.execute(text(f"TRUNCATE {tables} CASCADE"))
+
+
 @pytest.fixture
 def session(engine: Engine) -> Iterator[Session]:
     with Session(engine) as session:
         yield session
-    tables = ", ".join(table.name for table in Base.metadata.sorted_tables)
-    with engine.begin() as connection:
-        connection.execute(text(f"TRUNCATE {tables} CASCADE"))
+    truncate_all(engine)
+
+
+@pytest.fixture
+def sessions(engine: Engine) -> Iterator[sessionmaker[Session]]:
+    """Session factory, as the worker uses it; tables are emptied afterwards."""
+    yield make_session_factory(engine)
+    truncate_all(engine)

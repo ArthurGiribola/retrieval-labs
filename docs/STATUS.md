@@ -18,7 +18,17 @@ authorizes each step separately.
   (`-m integration`) need `TEST_DATABASE_URL`, refuse database names not ending in `_test`,
   and run in a new CI job with a Postgres service container. `retrieval_labs.db` is in the
   leakage test's inference modules.
-- Next: step 2, persistence and synchronous job processing.
+- **Step 2, persistence and synchronous processing: done.** `db/repository.py` (plain
+  functions) and `worker/process.py::process_job`, which runs the unchanged
+  `analyze_contract` on the stored text and saves chunks (offsets only; embeddings for
+  dense methods) and the report. Claiming a job is a conditional `UPDATE ... WHERE state =
+  'PENDING'`, so a duplicate delivery is skipped and never repeats an extractor call. No
+  retries: any error ends in FAILED with a short `error_code` (`processing_error`,
+  `budget_exceeded`, `document_corrupted`, `document_missing`); the traceback goes to the log
+  only. The stored text hash is re-checked before processing. Integration tests cover each
+  path; deliberately removing the PENDING guard or the hash check made the matching test fail.
+- Known gap (for step 3): a worker killed mid-job leaves the job RUNNING.
+- Next: step 3, Redis + RQ queue and the worker process.
 
 **CI (brief 14.2): added before Phase 6.** `.github/workflows/ci.yml` runs on every push and
 pull request, Linux only (owner decision; Windows is covered by local use): ruff lint and

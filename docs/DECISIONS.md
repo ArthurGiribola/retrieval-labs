@@ -31,3 +31,30 @@ measured results in `docs/EVALUATION.md`.
   extraction metrics exist; the README lists extraction as implemented but not evaluated.
 - **Not in scope:** uploading arbitrary contracts (privacy, brief Section 18; Phase 7),
   deployment, making the repository public (owner's decision).
+
+## D-003 — Analysis jobs are never retried automatically
+
+- **Date:** 2026-10-21, Phase 6 step 3.
+- **Decision:** A job that fails ends in `FAILED` with a short `error_code` and is not run
+  again by the system. RQ jobs are enqueued with no retries. A job left `RUNNING` because its
+  worker died (crash, kill, container restart) is marked `FAILED` with `worker_lost`, not
+  re-queued. Re-running a document means submitting it again, as a new job.
+- **Why:** A job may already have made paid LLM calls before it failed or lost its worker;
+  any automatic retry could repeat them without anyone deciding to (brief Section 11, budget
+  in Section 21.4). The same rule covers lost workers (owner decision).
+- **How it works:**
+  - A worker claims a job with `UPDATE ... WHERE state = 'PENDING'`, so a duplicate delivery
+    of the same job is skipped.
+  - Every job has a time limit (`JOB_TIMEOUT_S`, default 900 s); exceeding it ends the job
+    with `timeout`.
+  - A job still `RUNNING` more than the time limit plus 2 minutes after it started is marked
+    `worker_lost` when a worker starts or before it takes its next job.
+  - If a lost job's worker is in fact still alive and finishes, it cannot complete the job:
+    its chunks and report are rolled back.
+  - Error codes: `processing_error`, `timeout`, `budget_exceeded`, `document_corrupted`,
+    `document_missing`, `worker_lost`. Tracebacks are logged by the worker and never stored
+    or returned.
+- **Known limits:**
+  - Detection of a lost job waits for a worker to start or take a job.
+  - A job whose queue entry is lost before any worker claims it stays `PENDING`; Redis runs
+    with append-only persistence to make that unlikely.

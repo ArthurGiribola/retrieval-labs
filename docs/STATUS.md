@@ -27,8 +27,18 @@ authorizes each step separately.
   `budget_exceeded`, `document_corrupted`, `document_missing`); the traceback goes to the log
   only. The stored text hash is re-checked before processing. Integration tests cover each
   path; deliberately removing the PENDING guard or the hash check made the matching test fail.
-- Known gap (for step 3): a worker killed mid-job leaves the job RUNNING.
-- Next: step 3, Redis + RQ queue and the worker process.
+- **Step 3, queue and worker: done.** RQ 2.12.0 + redis-py 8.1.0; `redis:8.10.2-alpine` in
+  Compose (append-only persistence, no published port; `compose.dev.yaml` publishes
+  `127.0.0.1:56379`). `worker/queue.py` enqueues with no retries and a time limit
+  (`JOB_TIMEOUT_S`, default 900 s); `worker/main.py` (`python -m retrieval_labs.worker.main`)
+  builds the retriever (`RETRIEVER`, default `hybrid+rerank`) and extractor (`LLM_PROVIDER`,
+  default `fake`; `anthropic` refuses to start without `LLM_MAX_USD`) once and runs an RQ
+  `SimpleWorker` (no fork per job; timer-based timeouts on Windows). Owner decision: a job
+  left RUNNING by a dead worker becomes FAILED `worker_lost`, never re-queued (D-003);
+  results of a job marked lost while still running are rolled back. Tests: queue → worker →
+  COMPLETED, no retries, double enqueue runs once, lost-job sweep, a real 1 s timeout ending
+  in `timeout` (on Windows), and a manual CLI worker run against the application database.
+- Next: step 4, the FastAPI API (it will also run the lost-job sweep on status reads).
 
 **CI (brief 14.2): added before Phase 6.** `.github/workflows/ci.yml` runs on every push and
 pull request, Linux only (owner decision; Windows is covered by local use): ruff lint and

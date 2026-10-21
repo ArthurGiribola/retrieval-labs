@@ -11,6 +11,8 @@ dependencies = [
     "pgvector==0.5.0",
     "psycopg[binary]==3.3.6",
     "pydantic>=2.14.1",
+    "redis==8.1.0",
+    "rq==2.12.0",
     "sentence-transformers==6.1.0",
     "sqlalchemy==2.1.4",
     "torch==2.14.1",
@@ -82,5 +84,5 @@ addopts = ["-ra", "--strict-markers", "--import-mode=importlib"]
 markers = [
     "data: requires the real CUAD dataset prepared under data/ (skipped when absent)",
     "smoke: deterministic evaluation on the synthetic CUAD fixture (CI smoke test, not results)",
-    "integration: needs PostgreSQL + pgvector at TEST_DATABASE_URL (skipped when unset)",
+    "integration: needs PostgreSQL + pgvector (TEST_DATABASE_URL) and, for queue tests, Redis (TEST_REDIS_URL); skipped when unset",
 ]

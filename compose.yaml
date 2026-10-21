@@ -1,5 +1,5 @@
 # Local stack. Nothing here is reachable from the network: services publish no ports
-# (compose.dev.yaml publishes Postgres on 127.0.0.1 only, for tests run from the host).
+# (compose.dev.yaml publishes Postgres and Redis on 127.0.0.1 only, for tests run from the host).
 name: retrieval-labs
 
 services:
@@ -18,5 +18,19 @@ services:
       timeout: 5s
       retries: 30
 
+  redis:
+    # The database holds job state; Redis holds only the queue. Append-only persistence keeps
+    # queued jobs across restarts (a lost entry would leave its job PENDING; see D-003).
+    image: redis:8.10.2-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
 volumes:
   postgres-data:
+  redis-data:

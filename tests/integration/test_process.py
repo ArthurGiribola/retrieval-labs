@@ -4,17 +4,25 @@ from __future__ import annotations
 
 import logging
 import uuid
+from datetime import timedelta
 from pathlib import Path
 
 import numpy as np
 import pytest
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from fake_models import HashingEmbedder
 from retrieval_labs.clauses import ClauseType
 from retrieval_labs.db import repository
-from retrieval_labs.db.models import EMBEDDING_DIMENSION, AnalysisResult, Chunk, Document, JobState
+from retrieval_labs.db.models import (
+    EMBEDDING_DIMENSION,
+    AnalysisResult,
+    Chunk,
+    Document,
+    JobState,
+    ProcessingJob,
+)
 from retrieval_labs.extraction.budget import SpendLedger
 from retrieval_labs.extraction.llm import ExtractionRequest, FakeExtractor, empty_answer
 from retrieval_labs.extraction.schema import ClauseAnswer, GoverningLawValue, Quote, Status
@@ -201,3 +209,46 @@ def test_a_document_altered_after_submission_is_not_processed(
     assert extractor.requests == []
     with sessions() as session:
         assert repository.get_job(session, job_id).error_code == ErrorCode.DOCUMENT_CORRUPTED
+
+
+def test_results_are_discarded_if_the_job_is_marked_lost_while_running(
+    sessions: sessionmaker[Session],
+) -> None:
+    job_id = submit(sessions)
+
+    def mark_lost_midway(request: ExtractionRequest) -> ClauseAnswer | None:
+        with sessions.begin() as session:
+            repository.fail_lost_jobs(session, timedelta(0))
+        return empty_answer(request.clause_type)
+
+    outcome = process_job(
+        sessions,
+        job_id,
+        retriever=BM25Retriever(),
+        extractor=FakeExtractor(responder=mark_lost_midway),
+        config=CONFIG,
+    )
+    assert outcome is Outcome.DISCARDED
+    with sessions() as session:
+        job = repository.get_job(session, job_id)
+        assert repository.get_report(session, job_id) is None
+        assert session.scalars(select(Chunk)).all() == []
+    assert job.state is JobState.FAILED
+    assert job.error_code == repository.WORKER_LOST
+
+
+def test_only_running_jobs_past_the_limit_are_marked_lost(
+    sessions: sessionmaker[Session],
+) -> None:
+    pending = submit(sessions)
+    old = submit(sessions)
+    with sessions.begin() as session:
+        session.execute(
+            update(ProcessingJob)
+            .where(ProcessingJob.id == old)
+            .values(state=JobState.RUNNING, started_at=func.now() - timedelta(hours=1))
+        )
+        assert repository.fail_lost_jobs(session, timedelta(minutes=30)) == [old]
+        assert repository.fail_lost_jobs(session, timedelta(minutes=30)) == []
+    with sessions() as session:
+        assert repository.get_job(session, pending).state is JobState.PENDING

@@ -1,8 +1,8 @@
 """Process one job: load the stored contract, run the measured pipeline, persist the results.
 
 The retriever and extractor are built once per worker process and passed in, so this module
-never loads models itself. Jobs are never retried here: a failure ends in FAILED, and running
-the same job again (a duplicate delivery) does nothing, so no paid call is ever repeated.
+never loads models itself. Jobs are never retried (D-003): a failure ends in FAILED, and
+running the same job again (a duplicate delivery) does nothing, so no paid call is repeated.
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ import logging
 import uuid
 from enum import StrEnum
 
+from rq.timeouts import JobTimeoutException
 from sqlalchemy.orm import Session, sessionmaker
 
 from retrieval_labs.db import repository
@@ -31,12 +32,14 @@ class Outcome(StrEnum):
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
     SKIPPED = "SKIPPED"  # missing, or not PENDING (already taken by another delivery)
+    DISCARDED = "DISCARDED"  # marked worker_lost while running; its results are not saved
 
 
 class ErrorCode(StrEnum):
     DOCUMENT_MISSING = "document_missing"
     DOCUMENT_CORRUPTED = "document_corrupted"
     BUDGET_EXCEEDED = "budget_exceeded"
+    TIMEOUT = "timeout"
     PROCESSING_ERROR = "processing_error"
 
 
@@ -71,11 +74,17 @@ def process_job(
         with sessions.begin() as session:
             repository.save_chunks(session, uuid.UUID(contract.contract_id), chunks, embeddings)
             repository.save_report(session, job_id, report)
-            repository.finish_job(session, job_id, JobState.COMPLETED)
+            if not repository.finish_job(session, job_id, JobState.COMPLETED):
+                raise _JobLostError  # rolls back the chunks and the report
+    except _JobLostError:
+        logger.warning("job no longer running; results discarded", extra={"job_id": str(job_id)})
+        return Outcome.DISCARDED
     except repository.CorruptedDocumentError as error:
         return _fail(sessions, job_id, ErrorCode.DOCUMENT_CORRUPTED, error)
     except BudgetExceededError as error:
         return _fail(sessions, job_id, ErrorCode.BUDGET_EXCEEDED, error)
+    except JobTimeoutException as error:
+        return _fail(sessions, job_id, ErrorCode.TIMEOUT, error)
     except Exception as error:
         return _fail(sessions, job_id, ErrorCode.PROCESSING_ERROR, error)
 
@@ -84,6 +93,10 @@ def process_job(
         extra={"job_id": str(job_id), "chunks": len(chunks), "timings_s": report.timings_s},
     )
     return Outcome.COMPLETED
+
+
+class _JobLostError(Exception):
+    pass
 
 
 def _fail(

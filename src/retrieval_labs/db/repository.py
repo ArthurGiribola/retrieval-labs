@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
+from datetime import timedelta
 
 import numpy as np
 from sqlalchemy import delete, func, select, update
@@ -13,6 +14,8 @@ from retrieval_labs.db.models import AnalysisResult, Chunk, Document, JobState, 
 from retrieval_labs.documents import Contract, sha256_text
 from retrieval_labs.ingestion.chunking import Chunk as TextChunk
 from retrieval_labs.pipeline import ContractReport
+
+WORKER_LOST = "worker_lost"
 
 
 def create_document(session: Session, *, title: str, filename: str, text: str) -> Document:
@@ -66,14 +69,35 @@ def claim_job(session: Session, job_id: uuid.UUID) -> bool:
 
 def finish_job(
     session: Session, job_id: uuid.UUID, state: JobState, error_code: str | None = None
-) -> None:
+) -> bool:
+    """Move a RUNNING job to a final state. False if it is no longer RUNNING (for example,
+    marked lost by ``fail_lost_jobs``)."""
     if state not in (JobState.COMPLETED, JobState.FAILED):
         raise ValueError(f"not a final state: {state}")
-    session.execute(
+    result = session.execute(
         update(ProcessingJob)
         .where(ProcessingJob.id == job_id, ProcessingJob.state == JobState.RUNNING)
         .values(state=state, error_code=error_code, finished_at=func.now())
     )
+    return result.rowcount == 1
+
+
+def fail_lost_jobs(session: Session, older_than: timedelta) -> list[uuid.UUID]:
+    """Mark FAILED (``worker_lost``) every job RUNNING for longer than ``older_than``.
+
+    Callers pass more than the queue's job timeout, so a job still inside its time limit is
+    never touched. Lost jobs are not re-queued: they may already have made paid calls (D-003).
+    """
+    result = session.execute(
+        update(ProcessingJob)
+        .where(
+            ProcessingJob.state == JobState.RUNNING,
+            ProcessingJob.started_at < func.now() - older_than,
+        )
+        .values(state=JobState.FAILED, error_code=WORKER_LOST, finished_at=func.now())
+        .returning(ProcessingJob.id)
+    )
+    return list(result.scalars())
 
 
 def save_chunks(

@@ -7,12 +7,15 @@ end in ``_test``, because every run drops and recreates the schema.
 from __future__ import annotations
 
 import os
+import uuid
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 from alembic import command
 from alembic.config import Config
+from redis import Redis
+from rq import Queue
 from sqlalchemy import Engine, create_engine, make_url, text
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -71,6 +74,20 @@ def session(engine: Engine) -> Iterator[Session]:
     with Session(engine) as session:
         yield session
     truncate_all(engine)
+
+
+@pytest.fixture
+def queue() -> Iterator[Queue]:
+    """A queue with a unique name on the Redis at ``TEST_REDIS_URL``, deleted afterwards.
+    Nothing else in that Redis is touched."""
+    url = os.environ.get("TEST_REDIS_URL")
+    if not url:
+        pytest.skip("TEST_REDIS_URL is not set")
+    connection = Redis.from_url(url)
+    queue = Queue(f"analysis-test-{uuid.uuid4().hex}", connection=connection)
+    yield queue
+    queue.delete(delete_jobs=True)
+    connection.close()
 
 
 @pytest.fixture

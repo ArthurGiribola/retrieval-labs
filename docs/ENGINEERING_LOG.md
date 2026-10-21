@@ -487,3 +487,26 @@ Entry template:
   about 2.4 GB, for a CPU-only project, because the Windows wheel I used locally hides it.
   A platform-scoped source sends Linux to PyTorch's CPU index while the Windows lock entry
   stays byte-identical.
+
+## LOG-017 — With Redis down, a contract upload hung for 49 seconds
+
+- **Date / Phase:** 2026-10-21 / Phase 6, step 4
+- **Category:** performance / bug
+- **Context:** API test for the case where the job queue is unreachable: the upload must be
+  stored, its job marked `FAILED` (`queue_unavailable`), and the client answered `503`.
+- **The problem:** The test passed but took 48.8 s. redis-py 8 clients retry failed
+  connections 10 times with exponential backoff by default, so `POST /contracts` held the
+  request for that long before answering.
+- **How it was found:** `pytest --durations` flagged the test; timing `Redis(port=1).ping()`
+  on its own gave 49.2 s by default, 25.5 s with a 1 s connect timeout, and 2.0 s with a 1 s
+  connect timeout and no retries.
+- **Impact if missed:** Any Redis outage would make every upload hang for close to a minute
+  instead of failing clearly, tying up server threads.
+- **Fix / decision:** The API builds its Redis client with `api_redis` (2 s connect timeout,
+  5 s socket timeout, one retry, no backoff). The test now takes 4.0 s and asserts it stays
+  under 10 s. The worker keeps redis-py's default, where waiting out a Redis restart is right.
+- **Evidence:** `src/retrieval_labs/api/app.py` (`api_redis`);
+  `tests/integration/test_api.py::test_unavailable_queue_fails_the_job_and_returns_503`.
+- **Interview version:** A test of the "queue is down" path passed, but slowly: 49 seconds.
+  The Redis client's default retry policy, sensible for a background worker, was wrong for
+  a request handler. I gave the API its own fail-fast client and pinned the time in the test.

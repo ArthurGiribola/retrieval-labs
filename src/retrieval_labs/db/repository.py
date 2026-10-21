@@ -138,3 +138,21 @@ def save_report(session: Session, job_id: uuid.UUID, report: ContractReport) -> 
 def get_report(session: Session, job_id: uuid.UUID) -> ContractReport | None:
     stored = session.scalars(select(AnalysisResult).where(AnalysisResult.job_id == job_id)).first()
     return None if stored is None else ContractReport.model_validate(stored.report)
+
+
+def latest_job(session: Session, document_id: uuid.UUID) -> ProcessingJob | None:
+    return session.scalars(
+        select(ProcessingJob)
+        .where(ProcessingJob.document_id == document_id)
+        .order_by(ProcessingJob.created_at.desc(), ProcessingJob.id)
+        .limit(1)
+    ).first()
+
+
+def document_exists(session: Session, document_id: uuid.UUID) -> bool:
+    return session.get(Document, document_id) is not None
+
+
+def delete_document(session: Session, document_id: uuid.UUID) -> None:
+    """Delete the document; its chunks, jobs and reports go with it (ON DELETE CASCADE)."""
+    session.execute(delete(Document).where(Document.id == document_id))

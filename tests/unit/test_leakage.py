@@ -88,6 +88,7 @@ INFERENCE_MODULES = (
     "retrieval_labs.pipeline",
     "retrieval_labs.db",
     "retrieval_labs.worker",
+    "retrieval_labs.api",
 )
 
 

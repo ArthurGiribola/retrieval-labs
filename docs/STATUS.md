@@ -38,7 +38,24 @@ authorizes each step separately.
   results of a job marked lost while still running are rolled back. Tests: queue → worker →
   COMPLETED, no retries, double enqueue runs once, lost-job sweep, a real 1 s timeout ending
   in `timeout` (on Windows), and a manual CLI worker run against the application database.
-- Next: step 4, the FastAPI API (it will also run the lost-job sweep on status reads).
+- **Step 4, API: done** (within its 3-day estimate). FastAPI 0.142.4 + uvicorn 0.54.0 +
+  python-multipart 0.0.32 (`retrieval_labs.api`). Endpoints:
+  - `GET /health` (503 `degraded` if the database or queue is down);
+  - `POST /contracts` (multipart UTF-8 `.txt`, optional `title`; 202 with ids and URLs);
+  - `GET /contracts/{id}/status` (also marks lost jobs);
+  - `GET /contracts/{id}/report` (409 `report_not_ready` / `job_failed`);
+  - `DELETE /contracts/{id}` (204; 409 while running; cascades to chunks, jobs, reports);
+  - `GET /benchmarks/latest` (stored `phase4-test` rows via `report_tables`).
+
+  Uploads: `MAX_UPLOAD_BYTES` (default 2 MB; oversized bodies refused before multipart
+  parsing), `.txt` + `text/plain` only, strict UTF-8, no NUL, not blank. Text stored byte
+  for byte (tested with CRLF and non-ASCII). Filenames are sanitized labels only, never
+  paths. One error shape `{"error": {"code", "message"}}`; messages never come from
+  exceptions, so no traceback or secret reaches clients (tested). An unreachable queue
+  answers 503 and fails the job `queue_unavailable` within seconds (LOG-017). No auth or
+  rate limiting: local only. Verified with a real uvicorn on `127.0.0.1:8000` (only
+  listener), `curl` and a separate worker process: submit → COMPLETED → report → delete.
+- Next: step 5, structured JSON logging and central configuration.
 
 **CI (brief 14.2): added before Phase 6.** `.github/workflows/ci.yml` runs on every push and
 pull request, Linux only (owner decision; Windows is covered by local use): ruff lint and

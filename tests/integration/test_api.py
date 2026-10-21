@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import io
+import json
 import logging
 import time
 from collections.abc import AsyncIterator, Iterator
@@ -17,8 +19,10 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from retrieval_labs.api.app import api_redis, create_app
+from retrieval_labs.config import Settings
 from retrieval_labs.db.models import AnalysisResult, Chunk, Document, JobState, ProcessingJob
 from retrieval_labs.extraction.llm import FakeExtractor
+from retrieval_labs.logging_setup import configure_logging
 from retrieval_labs.retrieval.bm25 import BM25Retriever
 from retrieval_labs.worker.main import AnalysisWorker
 from retrieval_labs.worker.tasks import Runtime, configure
@@ -42,7 +46,8 @@ def make_client(sessions: sessionmaker[Session], queue: Queue) -> TestClient:
         app.state.queue = queue
         yield
 
-    app = create_app(lifespan=lifespan, reports_dir=ROOT / "reports" / "benchmark")
+    settings = Settings(database_url="unused", redis_url="unused")
+    app = create_app(settings, lifespan=lifespan, reports_dir=ROOT / "reports" / "benchmark")
     return TestClient(app, raise_server_exceptions=False)
 
 
@@ -200,3 +205,30 @@ def test_contract_text_is_never_logged(
     for record in caplog.records:
         logged = record.getMessage() + str(record.__dict__)
         assert "Schedule A" not in logged and "Delaware" not in logged
+
+
+def test_a_full_job_writes_json_logs_without_contract_text(
+    client: TestClient, queue: Queue
+) -> None:
+    root = logging.getLogger()
+    saved = (list(root.handlers), root.level)
+    buffer = io.StringIO()
+    configure_logging("DEBUG", buffer)
+    try:
+        submission = submit(client)
+        drain(queue)
+        client.get(submission["report_url"])
+        client.post("/contracts", files={"file": ("a.pdf", b"%PDF", "application/pdf")})
+    finally:
+        root.handlers[:] = saved[0]
+        root.setLevel(saved[1])
+
+    entries = [json.loads(line) for line in buffer.getvalue().split("\n") if line]
+    events = {entry["event"] for entry in entries}
+    assert {"contract submitted", "job completed"} <= events
+    submitted = next(e for e in entries if e["event"] == "contract submitted")
+    assert submitted["document_id"] == submission["document_id"]
+    assert submitted["characters"] == len(TEXT)
+    assert len(submitted["text_sha256"]) == 64
+    for phrase in ("Schedule A", "Delaware", "Société", "Soci\u00e9t\u00e9"):
+        assert phrase not in buffer.getvalue()

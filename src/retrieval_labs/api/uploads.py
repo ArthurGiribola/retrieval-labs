@@ -7,20 +7,14 @@ ever written to disk under an uploaded name.
 
 from __future__ import annotations
 
-import os
 import re
 import unicodedata
 
 from retrieval_labs.api.errors import ApiError
 
-DEFAULT_MAX_UPLOAD_BYTES = 2_000_000
 ALLOWED_CONTENT_TYPES = {"text/plain", "application/octet-stream", ""}
 MAX_LABEL_LENGTH = 255
 _UNSAFE = re.compile(r"[^A-Za-z0-9._ -]+")
-
-
-def max_upload_bytes() -> int:
-    return int(os.environ.get("MAX_UPLOAD_BYTES", str(DEFAULT_MAX_UPLOAD_BYTES)))
 
 
 def safe_filename(filename: str | None) -> str:

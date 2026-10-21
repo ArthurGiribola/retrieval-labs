@@ -19,6 +19,7 @@ from fastapi.testclient import TestClient
 from retrieval_labs.api.app import create_app, get_session
 from retrieval_labs.api.errors import ApiError
 from retrieval_labs.api.uploads import clean_title, safe_filename
+from retrieval_labs.config import Settings
 from retrieval_labs.evaluation.report_tables import TEST_RUN, load_rows
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -45,9 +46,9 @@ async def offline(app: FastAPI) -> AsyncIterator[None]:
 
 
 @pytest.fixture
-def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
-    monkeypatch.setenv("MAX_UPLOAD_BYTES", "1000")
-    app = create_app(lifespan=offline, reports_dir=ROOT / "reports" / "benchmark")
+def client() -> Iterator[TestClient]:
+    settings = Settings(database_url="unused", redis_url="unused", max_upload_bytes=1000)
+    app = create_app(settings, lifespan=offline, reports_dir=ROOT / "reports" / "benchmark")
     app.dependency_overrides[get_session] = lambda: iter([object()])
     with TestClient(app, raise_server_exceptions=False) as client:
         yield client

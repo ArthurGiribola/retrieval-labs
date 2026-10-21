@@ -8,11 +8,12 @@ from __future__ import annotations
 
 import logging
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import timedelta
 
 from sqlalchemy.orm import Session, sessionmaker
 
+from retrieval_labs.config import DEFAULT_JOB_TIMEOUT_S, LOST_JOB_GRACE
 from retrieval_labs.db import repository
 from retrieval_labs.extraction.budget import SpendLedger
 from retrieval_labs.extraction.llm import Extractor
@@ -20,9 +21,10 @@ from retrieval_labs.pipeline import PipelineConfig
 from retrieval_labs.retrieval.base import Retriever
 from retrieval_labs.retrieval.embeddings import Embedder
 from retrieval_labs.worker.process import DEFAULT_CONFIG, process_job
-from retrieval_labs.worker.queue import lost_after
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_LOST_AFTER = timedelta(seconds=DEFAULT_JOB_TIMEOUT_S) + LOST_JOB_GRACE
 
 
 @dataclass
@@ -33,7 +35,7 @@ class Runtime:
     embedder: Embedder | None = None
     ledger: SpendLedger | None = None
     config: PipelineConfig = DEFAULT_CONFIG
-    lost_after: timedelta = field(default_factory=lost_after)
+    lost_after: timedelta = DEFAULT_LOST_AFTER
 
 
 _runtime: Runtime | None = None

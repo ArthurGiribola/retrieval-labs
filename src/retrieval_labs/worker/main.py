@@ -2,16 +2,15 @@
 
     uv run python -m retrieval_labs.worker.main [--burst]
 
-Environment: ``DATABASE_URL``, ``REDIS_URL``, ``RETRIEVER`` (default ``hybrid+rerank``),
-``LLM_PROVIDER`` (``fake``, the default, or ``anthropic``, which also needs ``LLM_MAX_USD``,
-the spending cap for this worker's lifetime), ``JOB_TIMEOUT_S``.
+Settings come from the environment (``retrieval_labs.config``, listed in ``.env.example``).
+``LLM_PROVIDER=anthropic`` is paid and refuses to start without ``LLM_MAX_USD``, the
+spending cap for this worker's lifetime.
 """
 
 from __future__ import annotations
 
 import argparse
 import logging
-import os
 import sys
 from datetime import UTC, datetime
 
@@ -19,14 +18,16 @@ from redis import Redis
 from rq import Queue, SimpleWorker
 from rq.timeouts import TimerDeathPenalty, UnixSignalDeathPenalty
 
+from retrieval_labs.config import ConfigError, Settings, load_settings
 from retrieval_labs.db.session import make_engine, make_session_factory
 from retrieval_labs.extraction.budget import DEFAULT_LEDGER_PATH, SpendLedger
 from retrieval_labs.extraction.llm import Extractor, FakeExtractor
-from retrieval_labs.retrieval.factory import APPLICATION_METHOD, build_retrievers
+from retrieval_labs.logging_setup import configure_logging
+from retrieval_labs.retrieval.factory import build_retrievers
 from retrieval_labs.worker.queue import QUEUE_NAME
 from retrieval_labs.worker.tasks import Runtime, configure, sweep_lost_jobs
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("retrieval_labs.worker.main")  # not "__main__" under -m
 
 
 class AnalysisWorker(SimpleWorker):
@@ -36,31 +37,27 @@ class AnalysisWorker(SimpleWorker):
     death_penalty_class = TimerDeathPenalty if sys.platform == "win32" else UnixSignalDeathPenalty
 
 
-def build_extractor(provider: str) -> tuple[Extractor, SpendLedger | None]:
-    if provider == "fake":
+def build_extractor(settings: Settings) -> tuple[Extractor, SpendLedger | None]:
+    if settings.llm_provider == "fake":
         return FakeExtractor(), None
-    if provider != "anthropic":
-        raise ValueError(f"unknown LLM_PROVIDER {provider!r}; use 'fake' or 'anthropic'")
-    max_usd = os.environ.get("LLM_MAX_USD")
-    if not max_usd:
-        raise ValueError("LLM_PROVIDER=anthropic requires LLM_MAX_USD (spending cap)")
     from retrieval_labs.extraction.anthropic_extractor import AnthropicExtractor
 
+    # Settings guarantee the cap is set for the paid provider.
     run_id = datetime.now(UTC).strftime("worker-%Y%m%dT%H%M%SZ")
-    return AnthropicExtractor(), SpendLedger(DEFAULT_LEDGER_PATH, run_id, float(max_usd))
+    ledger = SpendLedger(DEFAULT_LEDGER_PATH, run_id, settings.llm_max_usd)
+    return AnthropicExtractor(), ledger
 
 
-def build_runtime() -> Runtime:
-    provider = os.environ.get("LLM_PROVIDER", "fake")
-    extractor, ledger = build_extractor(provider)
-    method = os.environ.get("RETRIEVER", APPLICATION_METHOD)
-    retrievers, info = build_retrievers([method])
+def build_runtime(settings: Settings) -> Runtime:
+    extractor, ledger = build_extractor(settings)
+    retrievers, info = build_retrievers([settings.retriever])
     return Runtime(
-        sessions=make_session_factory(make_engine()),
-        retriever=retrievers[method],
+        sessions=make_session_factory(make_engine(settings.database_url)),
+        retriever=retrievers[settings.retriever],
         extractor=extractor,
         embedder=info.get("embedder"),
         ledger=ledger,
+        lost_after=settings.lost_after,
     )
 
 
@@ -68,18 +65,27 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Consume the analysis queue.")
     parser.add_argument("--burst", action="store_true", help="exit when the queue is empty")
     args = parser.parse_args(argv)
-    logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))
+    try:
+        settings = load_settings()
+    except ConfigError as error:
+        print(error, file=sys.stderr)
+        return 2
+    configure_logging(settings.log_level)
 
-    runtime = build_runtime()
+    runtime = build_runtime(settings)
     configure(runtime)
     sweep_lost_jobs(runtime)
     logger.info(
         "worker ready",
-        extra={"retriever": runtime.retriever.name, "provider": runtime.extractor.provider},
+        extra={
+            "retriever": runtime.retriever.name,
+            "provider": runtime.extractor.provider,
+            "job_timeout_s": settings.job_timeout_s,
+        },
     )
-    redis = Redis.from_url(os.environ["REDIS_URL"])
+    redis = Redis.from_url(settings.redis_url)
     worker = AnalysisWorker([Queue(QUEUE_NAME, connection=redis)], connection=redis)
-    worker.work(burst=args.burst, with_scheduler=False)
+    worker.work(burst=args.burst, with_scheduler=False, logging_level=settings.log_level)
     return 0
 
 

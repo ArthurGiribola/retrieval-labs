@@ -55,7 +55,22 @@ authorizes each step separately.
   answers 503 and fails the job `queue_unavailable` within seconds (LOG-017). No auth or
   rate limiting: local only. Verified with a real uvicorn on `127.0.0.1:8000` (only
   listener), `curl` and a separate worker process: submit → COMPLETED → report → delete.
-- Next: step 5, structured JSON logging and central configuration.
+- **Step 5, configuration and logging: done.**
+  - `retrieval_labs.config.Settings` (Pydantic) is the only place the API and worker read the
+    environment; Alembic still reads `DATABASE_URL` alone.
+  - Invalid settings stop the process with exit code 2, naming the variables without echoing
+    values. The paid provider cannot be configured without `LLM_MAX_USD`.
+  - `retrieval_labs.logging_setup` writes JSON lines on stdout for our loggers, uvicorn and
+    RQ, with ids, hashes, sizes and durations as fields.
+  - New entry points: `python -m retrieval_labs.api` (binds `API_HOST`, default 127.0.0.1;
+    no `Server` header) and `python -m retrieval_labs.worker.main`.
+  - `.env.example` lists every setting, checked by a test.
+  - An end-to-end test (submit → worker → report) checks that every log line is JSON and
+    that no contract text appears. Logging a slice of the text on purpose made both log
+    tests fail.
+  - Real processes: 9 API and 12 worker log lines, all JSON, no contract text.
+- Next: step 6, Docker image and full Compose stack (asks owner approval before the model
+  download).
 
 **CI (brief 14.2): added before Phase 6.** `.github/workflows/ci.yml` runs on every push and
 pull request, Linux only (owner decision; Windows is covered by local use): ruff lint and

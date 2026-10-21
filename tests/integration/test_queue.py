@@ -23,6 +23,7 @@ from retrieval_labs.worker.tasks import Runtime, configure
 
 pytestmark = pytest.mark.integration
 
+TIMEOUT_S = 900
 TEXT = "This Agreement shall be governed by the laws of the State of New York."
 
 
@@ -48,7 +49,7 @@ def drain(queue: Queue) -> None:
 
 def test_a_queued_job_is_completed_by_the_worker(runtime: Runtime, queue: Queue) -> None:
     job_id = submit(runtime.sessions)
-    enqueue_job(queue, job_id)
+    enqueue_job(queue, job_id, TIMEOUT_S)
     drain(queue)
 
     rq_job = Job.fetch(str(job_id), connection=queue.connection)
@@ -59,12 +60,9 @@ def test_a_queued_job_is_completed_by_the_worker(runtime: Runtime, queue: Queue)
         assert repository.get_report(session, job_id) is not None
 
 
-def test_queued_jobs_have_no_retries_and_a_time_limit(
-    queue: Queue, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setenv("JOB_TIMEOUT_S", "123")
+def test_queued_jobs_have_no_retries_and_a_time_limit(queue: Queue) -> None:
     job_id = uuid.uuid4()
-    enqueue_job(queue, job_id)
+    enqueue_job(queue, job_id, 123)
     rq_job = Job.fetch(str(job_id), connection=queue.connection)
     assert rq_job.timeout == 123
     assert not rq_job.retries_left
@@ -73,11 +71,11 @@ def test_queued_jobs_have_no_retries_and_a_time_limit(
 
 def test_enqueueing_twice_runs_the_pipeline_once(runtime: Runtime, queue: Queue) -> None:
     job_id = submit(runtime.sessions)
-    enqueue_job(queue, job_id)
-    enqueue_job(queue, job_id)
+    enqueue_job(queue, job_id, TIMEOUT_S)
+    enqueue_job(queue, job_id, TIMEOUT_S)
     drain(queue)
     calls = len(runtime.extractor.requests)
-    enqueue_job(queue, job_id)
+    enqueue_job(queue, job_id, TIMEOUT_S)
     drain(queue)
     assert len(runtime.extractor.requests) == calls
     with runtime.sessions() as session:
@@ -97,7 +95,7 @@ def test_the_worker_marks_long_running_jobs_lost_and_does_not_rerun_them(
                 .values(state=JobState.RUNNING, started_at=ProcessingJob.created_at - age)
             )
     next_id = submit(runtime.sessions)
-    enqueue_job(queue, next_id)
+    enqueue_job(queue, next_id, TIMEOUT_S)
     drain(queue)
 
     with runtime.sessions() as session:
@@ -120,13 +118,12 @@ class SlowExtractor(FakeExtractor):
 
 
 def test_a_job_over_its_time_limit_fails_with_timeout(
-    sessions: sessionmaker[Session], queue: Queue, monkeypatch: pytest.MonkeyPatch
+    sessions: sessionmaker[Session], queue: Queue
 ) -> None:
     configure(Runtime(sessions=sessions, retriever=BM25Retriever(), extractor=SlowExtractor()))
-    monkeypatch.setenv("JOB_TIMEOUT_S", "1")
     try:
         job_id = submit(sessions)
-        enqueue_job(queue, job_id)
+        enqueue_job(queue, job_id, 1)
         started = time.monotonic()
         drain(queue)
         assert time.monotonic() - started < 4

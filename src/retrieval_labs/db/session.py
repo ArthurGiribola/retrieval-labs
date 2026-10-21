@@ -1,4 +1,5 @@
-"""Engine and session factory for the database named by ``DATABASE_URL``."""
+"""Engine and session factory. The API and worker pass ``Settings.database_url``; Alembic
+reads ``DATABASE_URL`` directly, so migrations need nothing else configured."""
 
 from __future__ import annotations
 
@@ -16,8 +17,8 @@ def database_url() -> str:
     return url
 
 
-def make_engine(url: str | None = None) -> Engine:
-    return create_engine(url or database_url(), pool_pre_ping=True)
+def make_engine(url: str) -> Engine:
+    return create_engine(url, pool_pre_ping=True)
 
 
 def make_session_factory(engine: Engine) -> sessionmaker[Session]:

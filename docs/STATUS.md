@@ -1,6 +1,6 @@
 # Status
 
-_Last updated: 2026-10-21_
+_Last updated: 2026-10-22_
 
 ## Current phase
 
@@ -74,7 +74,7 @@ authorizes each step separately.
     `uv sync --locked --no-dev --no-group demo`), one image for every service. The build
     fails unless torch is `+cpu` and no `nvidia-*`/`cuda-*`/`triton` package is installed:
     "torch 2.14.1+cpu, 69 packages, none CUDA". Image 2.09 GB, of which the venv is 1.5 GB
-    (torch 768 MB unpacked). A CI `image` job builds it on every push.
+    (torch 768 MB unpacked). A CI `image` job builds it on every push (its first version broke the workflow file, so run #7 started no jobs; fixed and guarded by a test, LOG-019).
   - **Compose:** `api`, `worker`, `postgres`, `redis` plus one-off `migrate` and `models`
     (profile `setup`). Only the API publishes a port, on `127.0.0.1:8000` (`netstat`
     confirmed it is the only listener). Containers run the free extractor only, with no API

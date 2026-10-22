@@ -15,23 +15,23 @@ from retrieval_labs.retrieval.reranker import MINILM_RERANKER
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def load_compose(name: str) -> dict:
+def load_yaml(name: str) -> dict:
     return yaml.safe_load((ROOT / name).read_text(encoding="utf-8"))
 
 
 def test_only_the_api_publishes_a_port_and_only_on_loopback() -> None:
-    services = load_compose("compose.yaml")["services"]
+    services = load_yaml("compose.yaml")["services"]
     published = {name: s["ports"] for name, s in services.items() if "ports" in s}
     assert published == {"api": ["127.0.0.1:8000:8000"]}
 
 
 def test_the_dev_override_publishes_only_on_loopback() -> None:
-    for service in load_compose("compose.dev.yaml")["services"].values():
+    for service in load_yaml("compose.dev.yaml")["services"].values():
         assert all(port.startswith("127.0.0.1:") for port in service["ports"])
 
 
 def test_containers_never_get_the_paid_provider_or_its_key() -> None:
-    compose = load_compose("compose.yaml")
+    compose = load_yaml("compose.yaml")
     for name, service in compose["services"].items():
         environment = service.get("environment") or {}
         assert "ANTHROPIC_API_KEY" not in environment, name
@@ -39,12 +39,23 @@ def test_containers_never_get_the_paid_provider_or_its_key() -> None:
             assert environment["LLM_PROVIDER"] == "fake", name
 
 
+def test_the_ci_workflow_parses_and_checks_the_cpu_only_build() -> None:
+    # An invalid workflow makes GitHub start a run with no jobs at all (LOG-019).
+    jobs = load_yaml(".github/workflows/ci.yml")["jobs"]
+    assert set(jobs) == {"checks", "integration", "image"}
+    for name, job in jobs.items():
+        for step in job["steps"]:
+            assert isinstance(step.get("run", ""), str), name
+    image_commands = [step.get("run", "") for step in jobs["image"]["steps"]]
+    assert any('grep -q "CPU-only: torch" build.log' in run for run in image_commands)
+
+
 def test_only_the_models_step_goes_online() -> None:
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     assert "HF_HUB_OFFLINE=1" in dockerfile
     online = {
         name
-        for name, service in load_compose("compose.yaml")["services"].items()
+        for name, service in load_yaml("compose.yaml")["services"].items()
         if (service.get("environment") or {}).get("HF_HUB_OFFLINE") == "0"
     }
     assert online == {"models"}

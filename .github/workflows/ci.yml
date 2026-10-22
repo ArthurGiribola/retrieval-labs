@@ -99,5 +99,7 @@ jobs:
       - name: Build image (CPU-only torch check runs inside)
         run: docker build --progress=plain -t retrieval-labs:ci . 2>&1 | tee build.log
 
+      # Block scalar: an unquoted "CPU-only: torch" is a YAML mapping and breaks the file (LOG-019).
       - name: Confirm the CPU-only check ran
-        run: grep -q "CPU-only: torch" build.log
+        run: |
+          grep -q "CPU-only: torch" build.log

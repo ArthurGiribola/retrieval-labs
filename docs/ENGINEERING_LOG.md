@@ -534,3 +534,27 @@ Entry template:
 - **Interview version:** The budget guard only works if every paid caller writes to the same
   ledger. Containerizing the worker would have silently split it, so I kept containers on
   the free extractor and made a test fail if anyone hands them the paid one.
+
+## LOG-019 — One unquoted colon made GitHub skip every CI job
+
+- **Date / Phase:** 2026-10-22 / Phase 6, step 6 (follow-up)
+- **Category:** bug
+- **Context:** Step 6 added an `image` job to `.github/workflows/ci.yml`, whose last step
+  was `run: grep -q "CPU-only: torch" build.log`.
+- **The problem:** That value is an unquoted YAML scalar that contains `": "`, so YAML reads
+  it as a nested mapping and rejects the whole file. GitHub still records a run for the
+  push, but with no jobs, shown as failed in "-1s" (run #7).
+- **How it was found:** `yaml.safe_load` on the workflow raised `ScannerError: mapping values
+  are not allowed here` at line 103, column 31, the colon inside the grep pattern. The step
+  had never run locally because local checks run the commands, not the workflow file.
+- **Impact if missed:** CI silently stopped running lint, unit, integration and image checks
+  for every later push; the only sign was a red run with no logs.
+- **Fix / decision:** The command is now a block scalar (`run: |`). A unit test parses
+  `ci.yml`, checks the three jobs exist, every `run` is a string, and the image job still
+  greps for the CPU-only marker; it fails against the broken file and passes on the fix.
+- **Evidence:** `.github/workflows/ci.yml`; `tests/unit/test_infrastructure.py::
+  test_the_ci_workflow_parses_and_checks_the_cpu_only_build`.
+- **Interview version:** A CI run that fails in zero seconds with no jobs is a workflow
+  parse error, not a test failure. Mine was a colon inside a grep pattern. I fixed the
+  quoting and added a test that loads the workflow, so a broken CI file now fails locally
+  before it reaches GitHub.

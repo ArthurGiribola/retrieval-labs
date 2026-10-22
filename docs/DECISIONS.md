@@ -58,3 +58,18 @@ measured results in `docs/EVALUATION.md`.
   - Detection of a lost job waits for a worker to start or take a job.
   - A job whose queue entry is lost before any worker claims it stays `PENDING`; Redis runs
     with append-only persistence to make that unlikely.
+
+## D-004 — Backend before alerts, local only
+
+- **Date:** 2026-10-21, Phase 6 plan.
+- **Decision:** Phase 6 (backend and infrastructure) runs before Phase 5 (playbook and
+  alerts), which is deferred, not dropped. The backend therefore has no `alerts` table yet;
+  Phase 5 adds it with its own migration.
+- **Scope (Phase 6 plan, approved by the owner):**
+  - Uploads are UTF-8 `.txt` files only (no PDF or DOCX parsing).
+  - The stack is for local use: no authentication or rate limiting, and only the API
+    publishes a port, on `127.0.0.1`.
+  - Model weights are downloaded once into a Docker volume, not baked into the image.
+  - Containers run the free extractor only (LOG-018); paid extraction stays on the host,
+    where the single spend ledger lives.
+- **Not in scope:** deployment and a web upload interface (Phase 7).

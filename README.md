@@ -115,6 +115,20 @@ flowchart LR
   as untrusted data, the model must quote the contract verbatim, and every quote is checked
   against the original text. A spend ledger caps every paid run.
 
+The same pipeline also runs as a backend service: an API stores each uploaded contract and
+queues a job, and a separate worker process runs the analysis and stores the result.
+
+```mermaid
+flowchart LR
+    U["Client"] -->|"POST /contracts<br/>UTF-8 .txt"| API["FastAPI"]
+    API -->|"document + PENDING job"| DB[("PostgreSQL + pgvector")]
+    API -->|"job id"| Q[("Redis queue")]
+    Q --> W["Worker<br/>same pipeline as the benchmark"]
+    W -->|"chunks, embeddings,<br/>report, job state"| DB
+    U -->|"GET status / report"| API
+    API --> DB
+```
+
 ```text
 src/retrieval_labs/
   cuad/          dataset download, parsing, splits, hash-verified store, gold annotations
@@ -123,8 +137,15 @@ src/retrieval_labs/
   extraction/    prompt, Anthropic client, evidence verification, budget ledger
   evaluation/    relevance criterion, retrieval metrics, bootstrap, report tables
   pipeline.py    retrieval + extraction for one contract
-scripts/         prepare_cuad.py, run_benchmark.py, run_pipeline.py
+  api/           FastAPI app, upload validation, error responses
+  worker/        queue, job processing, worker entry point
+  db/            SQLAlchemy models and repository functions
+  config.py      settings read from the environment (the only place that reads it)
+migrations/      Alembic migrations
+scripts/         prepare_cuad.py, run_benchmark.py, run_pipeline.py,
+                 download_models.py, api_smoke.py
 demo/            Streamlit demo
+docker/          image build check, Postgres init script
 reports/         stored benchmark runs (summaries, per-item results, timings)
 docs/            evaluation, dataset notes, decisions, engineering log
 ```
@@ -144,6 +165,51 @@ uv run streamlit run demo/streamlit_app.py
 
 The first start downloads and loads the two models (about 230 MB on disk); each new contract
 is then embedded once and cached under `data/cache/`.
+
+## Backend: API and worker
+
+Requirements: Docker with Compose. Everything runs locally; the API has no authentication,
+so it is published on `127.0.0.1` only.
+
+```bash
+docker compose --profile setup run --rm models   # once: pinned model weights (~216 MiB)
+docker compose up -d --build --wait              # api, worker, postgres, redis (+ migrations)
+
+# End-to-end check: submit a contract, wait for its job, verify the report, delete it.
+# Without --file it sends the text of a CUAD test contract (needs prepare_cuad.py first).
+uv run python scripts/api_smoke.py --file my_contract.txt
+```
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /contracts` | Upload a UTF-8 `.txt` contract (multipart, optional `title`); returns 202 with the document and job ids |
+| `GET /contracts/{id}/status` | Job state: `PENDING`, `RUNNING`, `COMPLETED` or `FAILED` with an `error_code` |
+| `GET /contracts/{id}/report` | The stored analysis (409 while the job is not finished, or if it failed) |
+| `DELETE /contracts/{id}` | Remove the contract, its chunks, jobs and report (409 while running) |
+| `GET /benchmarks/latest` | The stored test-split benchmark table |
+| `GET /health` | Database and queue status (503 if either is down) |
+
+Interactive documentation is served at `http://127.0.0.1:8000/docs`.
+
+- **One image, several services.** The API, worker, migrations and model download share one
+  non-root image (2.09 GB) with CPU-only torch; the build fails if a CUDA package is
+  installed. Model weights live in a Docker volume, downloaded once by the only step that
+  goes online, after checking the pinned revisions and file sizes. The API and worker run
+  offline.
+- **Jobs are never retried automatically** ([D-003](docs/DECISIONS.md)). A job may have made
+  paid LLM calls before failing, so a retry must be someone's decision. Failures end in
+  `FAILED` with a short code (`timeout`, `worker_lost`, `document_corrupted`, ...); tracebacks
+  go to the worker log, never to clients.
+- **Containers use the free extractor only** ([LOG-018](docs/ENGINEERING_LOG.md)). The spend
+  ledger lives on the host, and a paid worker in a container would keep a second one, so the
+  budget cap could be exceeded without either ledger noticing.
+- **Uploads are validated before anything is stored**: size limit (2 MB by default),
+  `.txt` only, strict UTF-8, no NUL bytes. The text is stored byte for byte, so evidence
+  offsets point into exactly what was uploaded.
+- **Logs are JSON lines on stdout** with ids, hashes, sizes and durations; they never contain
+  contract text (tested).
+
+Settings are read from the environment; [.env.example](.env.example) lists every one.
 
 ## Running it
 
@@ -167,11 +233,21 @@ Benchmark outputs are deterministic: running the same benchmark twice with diffe
 `PYTHONHASHSEED` values produced byte-identical summaries and per-item results. The test
 split requires `--final` and was used once.
 
-CI (GitHub Actions, Linux) runs ruff lint and format checks, the unit tests that need neither
-CUAD nor model weights, and a deterministic evaluation smoke test on a synthetic fixture
-(`pytest -m smoke`). The smoke test checks that evaluation runs; its numbers are not benchmark
-results. The full benchmark runs locally. On Linux, torch comes from the CPU-only PyTorch
-index, so installs skip about 2.4 GB of CUDA packages.
+Integration tests need PostgreSQL and Redis. They wipe their database, so they refuse any
+database whose name does not end in `_test`:
+
+```bash
+docker compose -f compose.yaml -f compose.dev.yaml up -d --wait   # also publishes 127.0.0.1:55432 and :56379
+TEST_DATABASE_URL=postgresql+psycopg://retrieval_labs:retrieval_labs@127.0.0.1:55432/retrieval_labs_test \
+TEST_REDIS_URL=redis://127.0.0.1:56379/0 uv run pytest -m integration
+```
+
+CI (GitHub Actions, Linux) has three jobs: ruff lint and format checks, the unit tests that
+need neither CUAD nor model weights and a deterministic evaluation smoke test on a synthetic
+fixture (`pytest -m smoke`); the integration tests against PostgreSQL + pgvector and Redis
+service containers; and a build of the Docker image. The smoke test checks that evaluation
+runs; its numbers are not benchmark results. The full benchmark runs locally. On Linux,
+torch comes from the CPU-only PyTorch index, so installs skip about 2.4 GB of CUDA packages.
 
 ## Status
 
@@ -182,7 +258,9 @@ index, so installs skip about 2.4 GB of CUDA packages.
 | Retrieval-level presence detection | Done, evaluated |
 | Streamlit demo (retrieval only) | Done |
 | LLM extraction with verbatim-quote verification | Implemented and unit-tested; **not yet evaluated** (the paid pilot has not run) |
-| Playbook alerts, API, deployment | Planned |
+| Backend: API, Redis queue, worker, PostgreSQL + pgvector, Docker Compose | Done; local only, no authentication |
+| Playbook alerts | Planned |
+| Web interface for uploads, deployment | Planned |
 
 ## Limitations
 
@@ -199,6 +277,8 @@ index, so installs skip about 2.4 GB of CUDA packages.
 - **Dev and test are not directly comparable**: dev contracts are longer than test
   contracts, and every method scored higher on test.
 - **Latency** comes from one development machine (CPU, single process).
+- **The backend is for local use.** It has no authentication or rate limiting, accepts only
+  UTF-8 `.txt` files, and runs a single worker.
 
 ## Data, models and license
 

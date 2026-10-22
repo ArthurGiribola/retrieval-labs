@@ -37,6 +37,12 @@ live in [docs/DATASET.md](docs/DATASET.md).
   `--retriever bm25` needs no models. Paid (only after owner approval of a cost estimate):
   `uv run --env-file .env python scripts/run_pipeline.py ... --provider anthropic --max-usd X`.
   Every paid call is budget-checked and recorded in `data/llm_ledger.jsonl` (git-ignored).
+- Backend stack (Docker Desktop must be running): `docker compose up -d --build --wait`;
+  model weights go into a volume once with `docker compose --profile setup run --rm models`.
+  End-to-end check: `uv run python scripts/api_smoke.py`.
+- Integration tests: `docker compose -f compose.yaml -f compose.dev.yaml up -d --wait`, then
+  `uv run pytest -m integration` with `TEST_DATABASE_URL` (database name must end in `_test`)
+  and `TEST_REDIS_URL` set as in `.env.example`.
 - Never read, print or log `.env` or API keys.
 - Add a dependency only in the phase that uses it: `uv add <pkg>` / `uv add --dev <pkg>`.
 

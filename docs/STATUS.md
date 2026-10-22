@@ -4,10 +4,15 @@ _Last updated: 2026-10-22_
 
 ## Current phase
 
-**Phase 6 — Backend and Infrastructure: in progress** (plan approved 2026-10-21; Phase 5
-deferred by the owner, so no `alerts` table yet; uploads are UTF-8 `.txt` only; model
-weights will be downloaded once into a Docker volume, after owner approval). The owner
-authorizes each step separately.
+**Phase 6 — Backend and Infrastructure: complete** (2026-10-22; plan approved 2026-10-21,
+seven steps, each authorized by the owner). Phase 5 deferred by the owner, so no `alerts`
+table yet; uploads are UTF-8 `.txt` only; model weights downloaded once into a Docker volume
+(D-004). **Waiting for the owner's authorization to start the next phase.**
+
+Acceptance criterion (brief Section 16): a contract is processed through the API by an
+independently running worker, with persisted status and results. Met: `scripts/api_smoke.py`
+passed against the Compose stack (step 6, and again in step 7), including status and report
+served after a full stack restart (step 6).
 
 - **Step 1, database: done.** `retrieval_labs.db` (SQLAlchemy 2.1.4, psycopg 3.3.6, pgvector
   0.5.0): `documents`, `chunks` (`vector(384)`, nullable for BM25), `processing_jobs`
@@ -90,7 +95,13 @@ authorizes each step separately.
     whole stack, the status and report were still served.
   - **Logs:** all 28 API and worker log lines were JSON once transformers' progress bars were
     disabled.
-- Next: step 7, documentation and closing the phase.
+- **Step 7, documentation and closing the phase: done.**
+  - README: backend section (Compose commands, endpoints, design choices), service diagram,
+    code tree, integration-test commands, three CI jobs, status table and a local-only
+    limitation. Every command in it was run in this step.
+  - `docs/DECISIONS.md`: D-004 (backend before alerts, local only).
+  - CI fix before this step: the `image` job's unquoted colon had made the workflow invalid
+    (run #7, no jobs); fixed in `d9627ba`, all three jobs green there (owner confirmed).
 
 **CI (brief 14.2): added before Phase 6.** `.github/workflows/ci.yml` runs on every push and
 pull request, Linux only (owner decision; Windows is covered by local use): ruff lint and
@@ -193,9 +204,11 @@ Phase 3 — Initial Evaluation:
 
 | Command | Result |
 |---|---|
-| `uv run pytest` | 226 passed (includes 7 `data` tests and the hash-seed subprocess test) |
+| `uv run pytest` with `TEST_DATABASE_URL` / `TEST_REDIS_URL` on the dev Compose services (2026-10-22) | 314 passed, none skipped: 267 unit, 32 `integration`, 8 `smoke`, 7 `data` |
 | `uv run ruff check .` / `ruff format --check .` | Clean |
-| `uv run pytest -m "not data and not smoke"` / `-m smoke` | 211 passed / 8 passed (CI steps, run locally) |
+| `uv run pytest -m "not data and not smoke and not integration"` / `-m smoke` | 267 passed / 8 passed (CI `checks` steps, run locally) |
+| GitHub Actions on `d9627ba` | `checks`, `integration`, `image` green (owner confirmed) |
+| `docker compose -f compose.yaml -f compose.dev.yaml up -d --build --wait`, then `scripts/api_smoke.py` (CUAD test contract) and `--file` (an adversarial fixture) | Both PASSED; `/docs` 200; `/benchmarks/latest` serves `phase4-test` |
 | `run_benchmark.py` twice, `PYTHONHASHSEED` 11 and 97 | All outputs byte-identical (except run name) |
 | `streamlit run demo/streamlit_app.py` (headless) | Health `ok`; only listener 127.0.0.1 |
 | Phase 4 runs (dev, dev expanded, test) repeated with `PYTHONHASHSEED=97` | `summary.json`, item files, failure samples byte-identical; only timings/provenance differ |
@@ -224,8 +237,9 @@ Project LLM spend so far: US$ 0.00.
 
 ## Pending tasks / next recommended action
 
-1. Owner: capture a screenshot or GIF of the demo for the README slot; decide when to make
-   the repository public; authorize Phase 5.
+1. Owner: choose and authorize the next phase — Phase 5 (playbook and alerts, deferred;
+   it adds the `alerts` table with a new migration) or Phase 7 (interface and deployment).
+   Also pending: when to make the repository public.
 2. **Deferred: paid pilot** — `ANTHROPIC_API_KEY` in `.env`, then
    `uv run --env-file .env python scripts/run_pipeline.py --dev-first 3 --text-dir
    data/fixtures/adversarial --provider anthropic --max-usd 0.25`. After it: run the extraction
@@ -244,3 +258,7 @@ Project LLM spend so far: US$ 0.00.
 - Verification proves a quote exists, not that it is a legitimate clause (adversarial pilot).
 - Near-duplicate contracts are not detected; LLM outputs are not deterministic.
 - Playbook perspective for renewal notice undefined (Phase 5).
+- Backend: no authentication or rate limiting (local only); a job whose queue entry is lost
+  before a worker claims it stays `PENDING`, and lost workers are detected only when a worker
+  starts or takes a job (D-003); one worker; containers cannot run the paid extractor
+  (LOG-018).
